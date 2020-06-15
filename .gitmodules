@@ -1,3 +1,3 @@
 [submodule "board/hdl_lib/uart-for-fpga"]
-	path = board/hdl_lib/uart-for-fpga
+	path = board/rtl_lib/uart-for-fpga
 	url = https://github.com/jakubcabal/uart-for-fpga
