@@ -76,3 +76,4 @@ set_global_assignment -name VHDL_FILE "hdl_lib/uart-for-fpga/rtl/comp/uart_parit
 set_global_assignment -name VHDL_FILE "hdl_lib/uart-for-fpga/rtl/comp/uart_debouncer.vhd" -library uart
 set_global_assignment -name VHDL_FILE "hdl_lib/uart-for-fpga/rtl/comp/uart_clk_div.vhd" -library uart
 set_global_assignment -name VHDL_FILE "hdl_lib/uart-for-fpga/rtl/uart.vhd" -library uart
+set_global_assignment -name VHDL_FILE "rtl/fpga-brainfuck.vhd"
