@@ -7,6 +7,10 @@ This repository contains a source code and desing of the CPU processing the Brai
 
 You can use the [Bluespec Compiler Docker](https://github.com/benycze/bsc-docker-container) for the translation of the Bluespec code if you don't want to install it inside your live system.
 
+The project is using the following open-source libraries:
+
+* <https://github.com/jakubcabal/uart-for-fpga> - project with the implementation of the UART module which allows communication between PC and FPGA core
+
 ## How to translate the code
 
 TODO
