@@ -10,6 +10,7 @@ You can use the [Bluespec Compiler Docker](https://github.com/benycze/bsc-docker
 The project is using the following open-source libraries:
 
 * <https://github.com/jakubcabal/uart-for-fpga> - project with the implementation of the UART module which allows communication between PC and FPGA core
+* Debounce block - provided from a web page of Altera/Intel
 
 ## How to translate the code
 
