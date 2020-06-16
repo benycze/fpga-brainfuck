@@ -33,6 +33,8 @@ architecture full of fpga_top is
     constant BAUD_RATE     : integer := 115200; -- baud rate value
     constant PARITY_BIT    : string  := "none"; -- legal values: "none", "even", "odd", "mark", "space"
     constant USE_DEBOUNCER : boolean := True;   -- enable/disable debouncer
+
+    constant RESET_CNT_WIDTH : integer := 7;
     
     -- Signals ------------------------
 
@@ -40,8 +42,8 @@ architecture full of fpga_top is
     signal clk_ref      : std_logic;
     signal clk_c0 		: std_logic;
     
-    signal reset_cnt_c0	    : unsigned(6 downto 0);
-    signal reset_cnt_ref	: unsigned(6 downto 0);
+    signal reset_cnt_c0	    : unsigned(RESET_CNT_WIDTH-1 downto 0);
+    signal reset_cnt_ref	: unsigned(RESET_CNT_WIDTH-1 downto 0);
     signal locked		    : std_logic;
 
     signal reset_c0_sync        : std_logic;
@@ -139,9 +141,9 @@ begin
         end if;
     end process;
 
-    -- Output reset signal
-    reset_c0    <= not(reset_cnt_c0(6));
-    reset_ref   <= not(reset_cnt_ref(6));
+    -- Generated reset signals
+    reset_c0    <= not(reset_cnt_c0(RESET_CNT_WIDTH-1));
+    reset_ref   <= not(reset_cnt_ref(RESET_CNT_WIDTH-1));
 
     -- ------------------------------------------------------------------------
     -- UART connection -- it is passed to the 12MHz clock domain
