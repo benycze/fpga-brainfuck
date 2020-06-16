@@ -83,7 +83,7 @@ begin
     reset_sync_ref_i : reset_synchronizer 
     generic map(
         STAGES                  => 3,
-        RESET_ACTIVE_LEVEL      => '1'
+        RESET_ACTIVE_LEVEL      => '0'
     )
     port map(
         --# {{clocks|}}
@@ -97,7 +97,7 @@ begin
     reset_sync_c0_i : reset_synchronizer 
     generic map(
         STAGES                  => 3,
-        RESET_ACTIVE_LEVEL      => '1'
+        RESET_ACTIVE_LEVEL      => '0'
     )
     port map(
         --# {{clocks|}}
@@ -114,7 +114,7 @@ begin
     reset_c0_p : process(clk_c0)
     begin
         if(rising_edge(clk_c0))then
-            if(locked = '0' or reset_c0_sync = '1') then
+            if(locked = '0' or reset_c0_sync = '0') then
                 -- Reset is locked
                 reset_cnt_c0  <= (others=>'0');
             else
@@ -129,7 +129,7 @@ begin
     reset_ref_p : process(clk_ref)
     begin
         if(rising_edge(clk_ref))then
-            if(reset_ref_sync = '1') then
+            if(reset_ref_sync = '0') then
                 -- Reset is locked
                 reset_cnt_ref  <= (others=>'0');
             else
@@ -158,8 +158,8 @@ begin
         USE_DEBOUNCER => USE_DEBOUNCER
     )
     port map (
-        CLK         => CLK,
-        RST         => reset_c0,
+        CLK         => clk_ref,
+        RST         => reset_ref,
         -- UART INTERFACE
         UART_TXD    => UART_TXD,
         UART_RXD    => UART_RXD,
