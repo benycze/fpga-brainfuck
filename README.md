@@ -12,6 +12,12 @@ The project is using the following open-source libraries:
 * <https://github.com/jakubcabal/uart-for-fpga> - project with the implementation of the UART module which allows communication between PC and FPGA core
 * Debounce block - provided from a web page of Altera/Intel
 
+To clone the repository, run:
+
+```bash
+git clone --recursive https://github.com/benycze/fpga-brainfuck
+```
+
 ## How to translate the code
 
 TODO
