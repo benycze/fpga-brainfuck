@@ -127,7 +127,7 @@ begin
     reset_ref_p : process(clk_ref)
     begin
         if(rising_edge(clk_ref))then
-            if(locked = '0' or reset_ref_sync = '1') then
+            if(reset_ref_sync = '1') then
                 -- Reset is locked
                 reset_cnt_ref  <= (others=>'0');
             else
