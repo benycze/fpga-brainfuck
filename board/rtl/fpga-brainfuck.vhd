@@ -53,7 +53,15 @@ architecture full of fpga_top is
 
     signal btn_debounced_n      : std_logic;
     signal btn_debounced        : std_logic;
-	
+
+    signal uart_rx_din          : std_logic_vector(7 downto 0);
+    signal uart_rx_din_vld      : std_logic;
+    signal uart_rx_din_rdy      : std_logic;
+
+    signal uart_rx_dout         : std_logic_vector(7 downto 0);
+    signal uart_rx_dout_vld     : std_logic;
+    signal uart_rx_frame_error  : std_logic;
+
 begin
 
     -- ------------------------------------------------------------------------
@@ -150,7 +158,7 @@ begin
     -- ------------------------------------------------------------------------
 
     -- UART endpoint for the communication with the software
-	uart_i: entity uart.UART
+    uart_i: entity uart.UART
     generic map (
         CLK_FREQ      => CLK_FREQ,
         BAUD_RATE     => BAUD_RATE,
@@ -164,13 +172,50 @@ begin
         UART_TXD    => UART_TXD,
         UART_RXD    => UART_RXD,
         -- USER DATA OUTPUT INTERFACE
-        DOUT        => open,
-        DOUT_VLD    => open,
-        FRAME_ERROR => open,
+        DOUT        => uart_rx_dout,
+        DOUT_VLD    => uart_rx_dout_vld,
+        FRAME_ERROR => uart_rx_frame_error,
         -- USER DATA INPUT INTERFACE
-        DIN         => (others => '0'),
-        DIN_VLD     => '1',
-        DIN_RDY     => open
+        DIN         => uart_rx_din,
+        DIN_VLD     => uart_rx_din_vld,
+        DIN_RDY     => uart_rx_din_rdy
     );
+
+    uart_stream_i : entity work.uart_stream_sync
+        port map(
+          -- --------------------------------
+          -- Clocks & Reset
+          -- --------------------------------
+          RX_CLK      => clk_ref,
+          RX_RESET    => clk_reset,
+      
+          TX_CLK      => clk_c0,
+          TX_RESET    => reset_c0,
+      
+          -- --------------------------------
+          -- UART RX
+          -- --------------------------------
+  
+          -- USER DATA INPUT INTERFACE
+          RX_DIN         => uart_rx_din,
+          RX_DIN_VLD     => uart_rx_din_vld,
+          RX_DIN_RDY     => uart_rx_din_rdy,
+          -- USER DATA OUTPUT INTERFACE
+          RX_DOUT        => uart_rx_dout,
+          RX_DOUT_VLD    => uart_rx_dout_vld,
+          RX_FRAME_ERROR => uart_rx_frame_error,
+      
+          -- --------------------------------
+          -- UART 
+          -- --------------------------------
+          TX_DATA_OUT       : out std_logic_vector(7 downto 0);
+          TX_DATA_OUT_VLD   : out std_logic;
+          TX_DATA_OUT_NEXT  : in std_logic;
+
+          TX_DATA_IN        : in std_logic_vector(7 downto 0);
+          TX_DATA_IN_VLD    : in std_logic;
+          TX_DATA_IN_NEXT   : out std_logic          
+        ) ;
+
 
 end architecture;

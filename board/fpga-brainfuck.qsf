@@ -81,6 +81,7 @@ set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_debou
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_clk_div.vhd" -library uart
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/uart.vhd" -library uart
 set_global_assignment -name VHDL_FILE "rtl/fpga-brainfuck.vhd"
+set_global_assignment -name VHDL_FILE "rtl/uart_stream_sync.vhd"
 set_global_assignment -name QIP_FILE ip/pll/pll.qip
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
