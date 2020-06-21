@@ -1,10 +1,17 @@
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+-- -------------------------------------------------------------------------------
+--  PROJECT: FPGA Brainfuck
+-- -------------------------------------------------------------------------------
+--  AUTHORS: Pavel Benacek <pavel.benacek@gmail.com>
+--  LICENSE: The MIT License (MIT), please read LICENSE file
+--  WEBSITE: https://github.com/benycze/fpga-brainfuck/
+-- -------------------------------------------------------------------------------
 
 library uart;
-
 library extras;
+library ieee;
+
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 use extras.all;
 
 entity fpga_top is
@@ -183,38 +190,38 @@ begin
 
     uart_stream_i : entity work.uart_stream_sync
         port map(
-          -- --------------------------------
-          -- Clocks & Reset
-          -- --------------------------------
-          RX_CLK      => clk_ref,
-          RX_RESET    => clk_reset,
-      
-          TX_CLK      => clk_c0,
-          TX_RESET    => reset_c0,
-      
-          -- --------------------------------
-          -- UART RX
-          -- --------------------------------
-  
-          -- USER DATA INPUT INTERFACE
-          RX_DIN         => uart_rx_din,
-          RX_DIN_VLD     => uart_rx_din_vld,
-          RX_DIN_RDY     => uart_rx_din_rdy,
-          -- USER DATA OUTPUT INTERFACE
-          RX_DOUT        => uart_rx_dout,
-          RX_DOUT_VLD    => uart_rx_dout_vld,
-          RX_FRAME_ERROR => uart_rx_frame_error,
-      
-          -- --------------------------------
-          -- UART 
-          -- --------------------------------
-          TX_DATA_OUT       : out std_logic_vector(7 downto 0);
-          TX_DATA_OUT_VLD   : out std_logic;
-          TX_DATA_OUT_NEXT  : in std_logic;
+        -- --------------------------------
+        -- Clocks & Reset
+        -- --------------------------------
+        RX_CLK      => clk_ref,
+        RX_RESET    => clk_reset,
+        TX_CLK      => clk_c0,
+        TX_RESET    => reset_c0,
+        
+        -- --------------------------------
+        -- UART RX & TX folks
+        -- --------------------------------
+        -- USER DATA INPUT INTERFACE
+        RX_DIN         => uart_rx_din,
+        RX_DIN_VLD     => uart_rx_din_vld,
+        RX_DIN_RDY     => uart_rx_din_rdy,
+        -- USER DATA OUTPUT INTERFACE
+        RX_DOUT        => uart_rx_dout,
+        RX_DOUT_VLD    => uart_rx_dout_vld,
+        RX_FRAME_ERROR => uart_rx_frame_error,
+        
+        -- --------------------------------
+        -- UART 
+        -- --------------------------------
+        -- UART --> APP
+        TX_ADDR_OUT       : std_logic_vector(7 downto 0); -- Output address
+        TX_DATA_OUT       : std_logic_vector(7 downto 0); -- Output data
+        TX_DATA_OUT_VLD   : std_logic;                    -- Output data are valid
 
-          TX_DATA_IN        : in std_logic_vector(7 downto 0);
-          TX_DATA_IN_VLD    : in std_logic;
-          TX_DATA_IN_NEXT   : out std_logic          
+        -- APP --> UART
+        TX_DATA_IN        : in std_logic_vector(7 downto 0);  -- Input data to the application
+        TX_DATA_IN_VLD    : in std_logic;                     -- Input data valid
+        TX_DATA_IN_NEXT   : out std_logic                     -- Ready to accept new input data      
         ) ;
 
 
