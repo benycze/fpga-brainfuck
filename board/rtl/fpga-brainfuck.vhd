@@ -17,13 +17,23 @@ use extras.all;
 entity fpga_top is
 port (
     -- --------------------------------
-    -- CLOCKS
+    -- CLOCKS (reference)
     ----------------------------------- 
-    -- Reference clocks
     CLK		        : in std_logic;
-    -- Reset button
     RESET_BTN_N     : in std_logic; 
-    
+
+    -- --------------------------------
+    -- LED outptus
+    -----------------------------------
+    LED_0           : out std_logic;
+    LED_1           : out std_logic;
+    LED_2           : out std_logic;
+    LED_3           : out std_logic;
+    LED_4           : out std_logic;
+    LED_5           : out std_logic;
+    LED_6           : out std_logic;
+    LED_7           : out std_logic;
+
     -- --------------------------------
     -- UART interface
     -- --------------------------------
@@ -68,6 +78,11 @@ architecture full of fpga_top is
     signal uart_rx_dout         : std_logic_vector(7 downto 0);
     signal uart_rx_dout_vld     : std_logic;
     signal uart_rx_frame_error  : std_logic;
+
+    -- Demo signals
+    signal led_vector           : std_logic_vector(7 downto 0);
+    signal led_vector_vld       : std_logic;
+    signal reg_led_vector       : std_logic_vector(7 downto 0);
 
 begin
 
@@ -214,15 +229,39 @@ begin
         -- UART 
         -- --------------------------------
         -- UART --> APP
-        TX_ADDR_OUT       : std_logic_vector(7 downto 0); -- Output address
-        TX_DATA_OUT       : std_logic_vector(7 downto 0); -- Output data
-        TX_DATA_OUT_VLD   : std_logic;                    -- Output data are valid
+        TX_ADDR_OUT       => open,
+        TX_DATA_OUT       => led_vector,
+        TX_DATA_OUT_VLD   => led_vector_vld
+        TX_DATA_OUT_NEXT  => '1',
 
         -- APP --> UART
-        TX_DATA_IN        : in std_logic_vector(7 downto 0);  -- Input data to the application
-        TX_DATA_IN_VLD    : in std_logic;                     -- Input data valid
-        TX_DATA_IN_NEXT   : out std_logic                     -- Ready to accept new input data      
+        TX_DATA_IN        => open,
+        TX_DATA_IN_VLD    => open,
+        TX_DATA_IN_NEXT   => '0';    
         ) ;
 
+        -- Register for the storage of LED vector
+        led_regp : process( clk_c0 )
+        begin
+            if(rising_edge(clk_c0))then
+                if(reset_c0 = '1')then
+                    reg_led_vector <= (others=>'0');
+                else
+                    if(led_vector_vld = '1')then
+                        reg_led_vector <= led_vector_vld;
+                    end if;
+                end if;
+            end if;
+        end process ; -- led_regp
+
+        -- Demo output LED connections
+        LED_0   <= reg_led_vector(0);
+        LED_1   <= reg_led_vector(1);
+        LED_2   <= reg_led_vector(2);
+        LED_3   <= reg_led_vector(3);
+        LED_4   <= reg_led_vector(4);
+        LED_5   <= reg_led_vector(5);
+        LED_6   <= reg_led_vector(6);
+        LED_7   <= reg_led_vector(7);
 
 end architecture;
