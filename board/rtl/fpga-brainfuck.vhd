@@ -237,7 +237,7 @@ begin
         -- APP --> UART
         TX_DATA_IN        => open,
         TX_DATA_IN_VLD    => open,
-        TX_DATA_IN_NEXT   => '0';    
+        TX_DATA_IN_NEXT   => '0'
         ) ;
 
         -- Register for the storage of LED vector
