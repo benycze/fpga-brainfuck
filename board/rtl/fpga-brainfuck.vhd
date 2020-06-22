@@ -51,7 +51,8 @@ architecture full of fpga_top is
     constant PARITY_BIT    : string  := "none"; -- legal values: "none", "even", "odd", "mark", "space"
     constant USE_DEBOUNCER : boolean := True;   -- enable/disable debouncer
 
-    constant RESET_CNT_WIDTH : integer := 7;
+    constant RESET_CNT_WIDTH    : integer := 7;
+    constant RESET_SYNC_STAGES  : integer := 4;
     
     -- Signals ------------------------
 
@@ -112,7 +113,7 @@ begin
     -- Reset synchronization
     reset_sync_ref_i : reset_synchronizer 
     generic map(
-        STAGES                  => 3,
+        STAGES                  => RESET_SYNC_STAGES,
         RESET_ACTIVE_LEVEL      => '0'
     )
     port map(
@@ -126,7 +127,7 @@ begin
 
     reset_sync_c0_i : reset_synchronizer 
     generic map(
-        STAGES                  => 3,
+        STAGES                  => RESET_SYNC_STAGES,
         RESET_ACTIVE_LEVEL      => '0'
     )
     port map(
