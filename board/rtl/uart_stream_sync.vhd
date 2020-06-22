@@ -5,8 +5,10 @@
 --  LICENSE: The MIT License (MIT), please read LICENSE file
 --  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 -- -------------------------------------------------------------------------------
-
+library ieee;
 library extras;
+
+use ieee.std_logic_1164.all;
 use extras.all;
 
 entity uart_stream_sync is
@@ -30,7 +32,7 @@ entity uart_stream_sync is
     -- USER DATA OUTPUT INTERFACE
     RX_DOUT        : out std_logic_vector(7 downto 0); -- output data received via UART
     RX_DOUT_VLD    : out std_logic; -- when DOUT_VLD = 1, output data (DOUT) are valid (is assert only for one clock cycle)
-    RX_FRAME_ERROR : out std_logic  -- when FRAME_ERROR = 1, stop bit was invalid (is assert only for one clock cycle)
+    RX_FRAME_ERROR : out std_logic; -- when FRAME_ERROR = 1, stop bit was invalid (is assert only for one clock cycle)
 
     -- --------------------------------
     -- UART 
@@ -52,9 +54,9 @@ architecture full of uart_stream_sync is
 
   -- Constant -------------------------
     -- Commands to perform
-  constant CMD_WRITE  : std_logic_vector(7 downto 0) := x"0"; 
-  constant CMD_READ   : std_logic_vector(7 downto 0) := x"1";
-  constant CMD_ACK    : std_logic_vector(7 downto 0) := x"2";
+  constant CMD_WRITE  : std_logic_vector(7 downto 0) := x"00"; 
+  constant CMD_READ   : std_logic_vector(7 downto 0) := x"01";
+  constant CMD_ACK    : std_logic_vector(7 downto 0) := x"02";
 
     -- Number of synchronization stages
   constant SYNC_STAGES  : natural := 4;
@@ -69,13 +71,13 @@ architecture full of uart_stream_sync is
   -- Signals ---------------------------
     -- Signals for transition from RX --> FSM
   signal data_din_in      : std_logic_vector(8 downto 0);
-  signal data_din_out     : std_logic_vector(8 downto 0);
+  signal data_din_out     : std_ulogic_vector(8 downto 0);
   signal data_din_sending : std_logic;
   signal data_din_out_vld : std_logic;
 
     -- Signals for transtion from FSM --> TX
   signal data_dout_in           : std_logic_vector(8 downto 0);
-  signal data_dout_out          : std_logic_vector(8 downto 0);
+  signal data_dout_out          : std_ulogic_vector(8 downto 0);
   signal data_dout_new_data     : std_logic;
 
   -- Synchronized data in the DIN TX Clock domain
@@ -119,7 +121,7 @@ begin
       Reset_rx  => TX_RESET,
 
       --# {{data|Send port}}
-      Tx_data     => data_din_in,
+      Tx_data     => std_ulogic_vector(data_din_in),
       Send_data   => RX_DIN_VLD,
       Sending     => data_din_sending,
       Data_sent   => open,
@@ -134,11 +136,11 @@ begin
   RX_DIN_RDY  <= not(data_din_sending);
 
   -- Unpack data
-  data_din_rx     <= data_din_out(7 downto 0);
-  data_din_rx_vld <= data_din_out_vld;
+  data_din_rx     <= std_logic_vector(data_din_out(7 downto 0));
+  data_din_rx_vld <= std_logic(data_din_out_vld);
   
   --> FSM --> TX
-  rx_dout_sync_i : component handshake_synchronizer is
+  rx_dout_sync_i : handshake_synchronizer
     generic map(
       STAGES              => SYNC_STAGES,
       RESET_ACTIVE_LEVEL  => '1'
@@ -152,7 +154,7 @@ begin
       Reset_rx    => RX_RESET,
 
       --# {{data|Send port}}
-      Tx_data     => data_dout_in,
+      Tx_data     => std_ulogic_vector(data_dout_in),
       Send_data   => data_dout_rx_vld,
       Sending     => open,
       Data_sent   => data_dout_rx_send,
@@ -164,9 +166,9 @@ begin
     -- Input data mapping
     data_dout_in    <= data_dout_rx_frame_err & data_dout_rx;
     -- Mapping of transferred signals to outputs
-    RX_DOUT         <= data_dout_out(7 downto 0);
-    RX_DOUT_VLD     <= data_dout_new_data;
-    RX_FRAME_ERROR  <= data_dout_out(9);
+    RX_DOUT         <= std_logic_vector(data_dout_out(7 downto 0));
+    RX_DOUT_VLD     <= std_logic(data_dout_new_data);
+    RX_FRAME_ERROR  <= std_logic(data_dout_out(8));
 
   -- --------------------------------------------------------------------------
   -- Control FSM (TX_CLK)
@@ -192,11 +194,11 @@ begin
   -- Register for storage of the current state
   fsm_state_regp:process(TX_CLK)
   begin
-    if(rising_edge(TX_CLK))begin
+    if(rising_edge(TX_CLK))then
       if(TX_RESET = '1')then
         reg_state <= INIT;
       else
-        reg_state <= next_state
+        reg_state <= next_state;
       end if;
     end if;
   end process;

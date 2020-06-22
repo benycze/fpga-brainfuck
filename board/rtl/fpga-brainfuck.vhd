@@ -209,7 +209,7 @@ begin
         -- Clocks & Reset
         -- --------------------------------
         RX_CLK      => clk_ref,
-        RX_RESET    => clk_reset,
+        RX_RESET    => reset_ref,
         TX_CLK      => clk_c0,
         TX_RESET    => reset_c0,
         
@@ -231,13 +231,13 @@ begin
         -- UART --> APP
         TX_ADDR_OUT       => open,
         TX_DATA_OUT       => led_vector,
-        TX_DATA_OUT_VLD   => led_vector_vld
+        TX_DATA_OUT_VLD   => led_vector_vld,
         TX_DATA_OUT_NEXT  => '1',
 
         -- APP --> UART
-        TX_DATA_IN        => open,
-        TX_DATA_IN_VLD    => open,
-        TX_DATA_IN_NEXT   => '0'
+        TX_DATA_IN        => (others=>'0'),
+        TX_DATA_IN_VLD    => '0',
+        TX_DATA_IN_NEXT   => open
         ) ;
 
         -- Register for the storage of LED vector
@@ -248,7 +248,7 @@ begin
                     reg_led_vector <= (others=>'0');
                 else
                     if(led_vector_vld = '1')then
-                        reg_led_vector <= led_vector_vld;
+                        reg_led_vector <= led_vector;
                     end if;
                 end if;
             end if;
