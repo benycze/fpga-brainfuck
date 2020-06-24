@@ -6,7 +6,7 @@
 #  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 # -------------------------------------------------------------------------------
 
-set $PROJ_BASE "../.."
+set PROJ_BASE "../.."
 
 # Define the component list
 set COMP_LIST [list \
@@ -14,8 +14,13 @@ set COMP_LIST [list \
     $PROJ_BASE/rtl/uart_stream_sync.vhd \
 ]
 
-# Create work library
+# Create library extras
+
+
+# Create work library and map extras into the work directory
 vlib work
+vmap extras work
+
 foreach cmp $COMP_LIST {
     vcom -2008 $cmp
 }
