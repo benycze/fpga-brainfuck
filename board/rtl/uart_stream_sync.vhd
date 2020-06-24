@@ -49,6 +49,34 @@ end uart_stream_sync;
 
 architecture full of uart_stream_sync is
 
+  -- Component declaration ---------
+
+  component handshake_synchronizer is
+    generic (
+      STAGES : natural := 2; --# Number of flip-flops in the synchronizer
+      RESET_ACTIVE_LEVEL : std_ulogic := '1' --# Asynch. reset control level
+    );
+    port (
+      --# {{clocks|}}
+      Clock_tx : in std_ulogic; --# Transmitting domain clock
+      Reset_tx : in std_ulogic; --# Asynchronous reset for Clock_tx
+
+      Clock_rx : in std_ulogic; --# Receiving domain clock
+      Reset_rx : in std_ulogic; --# Asynchronous reset for Clock_rx
+
+
+      --# {{data|Send port}}
+      Tx_data   : in std_ulogic_vector; --# Data to send
+      Send_data : in std_ulogic;  --# Control signal to send new data
+      Sending   : out std_ulogic; --# Active while TX is in process
+      Data_sent : out std_ulogic; --# Flag to indicate TX completion
+
+      --# {{Receive port}}
+      Rx_data  : out std_ulogic_vector; --# Data received in clock_rx domain
+      New_data : out std_ulogic   --# Flag to indicate new data
+    );
+  end component;
+
   -- Constant -------------------------
     -- Commands to perform
   constant CMD_WRITE  : std_logic_vector(7 downto 0) := x"00"; 
@@ -104,7 +132,7 @@ begin
   -- Transfer serial signals from the UART clock domain to FSM clock doimain
   -- --------------------------------------------------------------------------
     -- RX ---> FSM
-  rx_din_sync_i : work.handshake_synchronizer
+  rx_din_sync_i : handshake_synchronizer
     generic map (
       STAGES                => SYNC_STAGES,
       RESET_ACTIVE_LEVEL    => '1'
@@ -137,7 +165,7 @@ begin
   data_din_rx_vld <= std_logic(data_din_out_vld);
   
   --> FSM --> TX
-  rx_dout_sync_i : work.handshake_synchronizer
+  rx_dout_sync_i : handshake_synchronizer
     generic map(
       STAGES              => SYNC_STAGES,
       RESET_ACTIVE_LEVEL  => '1'
