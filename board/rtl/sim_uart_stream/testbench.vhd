@@ -27,8 +27,11 @@ architecture full of testbench is
     constant clk_tx_period  : time := 5 ns;
     
     -- Number of clock cycles in the reset state
-    constant RESET_RX_PERIOD    : integer := 3;
-	constant RESET_TX_PERIOD    : integer := 3;
+	constant RESET_RX_PERIOD    	: integer := 3;
+	constant RESET_RX_WAIT_AFTER	: integer := 20;
+
+	constant RESET_TX_PERIOD    	: integer := 3;
+	constant RESET_TX_WAIT_AFTER	: integer := 20;
 	
 	-- Signals --------------------------------------------
 	signal rx_din 				: std_logic_vector(7 downto 0);
@@ -125,7 +128,46 @@ begin
 
     -- ------------------------------------------------------------------------
     -- Testbench 
-    -- ------------------------------------------------------------------------
-    -- TODO
+	-- ------------------------------------------------------------------------
+	tb_rx : process
+	begin
+		-- Initial values 
+		rx_din 				<= (others => '0');
+		rx_din_vld 			<= '0';
+
+		-- Wait untill the process is being reseted
+		wait until rising_edge(CLK_RX);
+		wait for RESET_RX_WAIT_AFTER * clk_rx_period;
+
+		-- Time to drive ....
+
+		-- 1) Read test
+
+		-- 2) Write test
+
+		-- End the testbench
+		wait;
+	end process;
+
+	tb_tx : process
+	begin
+		-- Initial values 
+		tx_data_out_next 	<= '0';
+		tx_data_in			<= (others => '0');
+		tx_data_in_vld		<= '0';
+
+		-- Wait untill the process is being reseted
+		wait until rising_edge(CLK_TX);
+		wait for RESET_TX_WAIT_AFTER * clk_tx_period;
+
+		-- Time to drive ....
+
+		-- 1) Read test
+
+		-- 2) Write test
+
+		-- End the testbench
+		wait;
+	end process;
 
 end architecture;
