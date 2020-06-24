@@ -18,6 +18,13 @@ To clone the repository, run:
 git clone --recursive https://github.com/benycze/fpga-brainfuck
 ```
 
+## Structure of the project
+
+The project contains following folders:
+
+* _board_  - HDL desing and Quartus project
+* _sw_ - Software for communication and synthesis and translation of Brainfuck program
+
 ## How to translate the code
 
 TODO
