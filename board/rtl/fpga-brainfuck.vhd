@@ -95,7 +95,7 @@ begin
     -- * CLK (12MHz) and reset_12 -- reference clocks and reset 
 
     -- Generate input clocks
-    pll_i : work.pll 
+    pll_i : entity work.pll 
     port map(
         inclk0		=> CLK,
         c0			=> clk_c0,
@@ -106,7 +106,7 @@ begin
     clk_ref <= CLK;
 
     -- Reset synchronization
-    reset_sync_ref_i : work.reset_synchronizer 
+    reset_sync_ref_i : entity work.reset_synchronizer 
     generic map(
         STAGES                  => RESET_SYNC_STAGES,
         RESET_ACTIVE_LEVEL      => '0'
@@ -120,7 +120,7 @@ begin
         Sync_reset => reset_ref_sync
     );
 
-    reset_sync_c0_i : work.reset_synchronizer 
+    reset_sync_c0_i : entity work.reset_synchronizer 
     generic map(
         STAGES                  => RESET_SYNC_STAGES,
         RESET_ACTIVE_LEVEL      => '0'
