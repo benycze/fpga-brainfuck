@@ -26,9 +26,12 @@ foreach cmp $COMP_LIST {
 
 vcom -2008 $TBENCH
 
+# Dump the makefile
+exec vmake > Makefile
+
 # Load testbench
 vsim work.testbench
 
 # Setup and start simulation
 add wave sim:/testbench/uut/*
-run 200 us
+run 10 us
