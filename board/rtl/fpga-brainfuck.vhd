@@ -5,14 +5,9 @@
 --  LICENSE: The MIT License (MIT), please read LICENSE file
 --  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 -- -------------------------------------------------------------------------------
-
-library uart;
-library extras;
 library ieee;
-
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use extras.all;
 
 entity fpga_top is
 port (
@@ -111,7 +106,7 @@ begin
     clk_ref <= CLK;
 
     -- Reset synchronization
-    reset_sync_ref_i : reset_synchronizer 
+    reset_sync_ref_i : work.reset_synchronizer 
     generic map(
         STAGES                  => RESET_SYNC_STAGES,
         RESET_ACTIVE_LEVEL      => '0'
@@ -125,7 +120,7 @@ begin
         Sync_reset => reset_ref_sync
     );
 
-    reset_sync_c0_i : reset_synchronizer 
+    reset_sync_c0_i : work.reset_synchronizer 
     generic map(
         STAGES                  => RESET_SYNC_STAGES,
         RESET_ACTIVE_LEVEL      => '0'
@@ -181,7 +176,7 @@ begin
     -- ------------------------------------------------------------------------
 
     -- UART endpoint for the communication with the software
-    uart_i: entity uart.UART
+    uart_i: entity work.UART
     generic map (
         CLK_FREQ      => CLK_FREQ,
         BAUD_RATE     => BAUD_RATE,

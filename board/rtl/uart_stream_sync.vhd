@@ -6,10 +6,7 @@
 --  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 -- -------------------------------------------------------------------------------
 library ieee;
-library extras;
-
 use ieee.std_logic_1164.all;
-use extras.all;
 
 entity uart_stream_sync is
   port (
@@ -107,7 +104,7 @@ begin
   -- Transfer serial signals from the UART clock domain to FSM clock doimain
   -- --------------------------------------------------------------------------
     -- RX ---> FSM
-  rx_din_sync_i : handshake_synchronizer
+  rx_din_sync_i : work.handshake_synchronizer
     generic map (
       STAGES                => SYNC_STAGES,
       RESET_ACTIVE_LEVEL    => '1'
@@ -140,7 +137,7 @@ begin
   data_din_rx_vld <= std_logic(data_din_out_vld);
   
   --> FSM --> TX
-  rx_dout_sync_i : handshake_synchronizer
+  rx_dout_sync_i : work.handshake_synchronizer
     generic map(
       STAGES              => SYNC_STAGES,
       RESET_ACTIVE_LEVEL  => '1'
