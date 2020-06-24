@@ -4,6 +4,12 @@ The control software and compiler is written in Python3 (to reach the maximal fl
 
 ## Communication protocol
 
+You need to install the [PySerial](https://pyserial.readthedocs.io/en/latest/shortintro.html) library into your system. The most suitable way is to use `pip3` and install it inside your home folder:
+
+```bash
+pip3 --user PySerial
+```
+
 ### Reading
 
 TODO
