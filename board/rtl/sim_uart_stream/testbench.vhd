@@ -148,7 +148,7 @@ begin
 	begin
 		RESET_RX <= '1';
 		wait for clk_rx_period*RESET_RX_PERIOD;
-      	RESET_RX <= '0';
+		RESET_RX <= '0';  
 		wait;
 	end process;
 	
