@@ -9,6 +9,8 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.math_real.all;
+
 use work.uart_sync_pkg.all;
 
 entity testbench is
@@ -31,7 +33,14 @@ architecture full of testbench is
 
 	constant RESET_TX_PERIOD    	: integer := 3;
 	constant RESET_TX_WAIT_AFTER	: integer := 20;
+
+	-- Configuration of random destination ready signal (maximal number of cycles)
+	constant TX_NEXT_RDY_IDLE_MIN	: integer := 2;
+	constant TX_NEXT_RDY_IDLE_MAX	: integer := 10;
 	
+	constant TX_NEXT_RDY_ON_MIN		: integer := 2;
+	constant TX_NEXT_RDY_ON_MAX		: integer := 5;
+
 	-- Signals --------------------------------------------
 	signal rx_din 				: std_logic_vector(7 downto 0);
 	signal rx_din_vld			: std_logic;
@@ -41,11 +50,54 @@ architecture full of testbench is
 	signal rx_frame_error 		: std_logic;
 	signal tx_addr_out 			: std_logic_vector(7 downto 0);
 	signal tx_data_out 			: std_logic_vector(7 downto 0);
+	signal tx_data_write		: std_logic;
 	signal tx_data_out_vld		: std_logic;
 	signal tx_data_out_next 	: std_logic;
 	signal tx_data_in        	: std_logic_vector(7 downto 0);
 	signal tx_data_in_vld    	: std_logic;
 	signal tx_data_in_next   	: std_logic;
+
+	-- Testing data ---------------------------------------
+	type data_rec_t is record
+		data	: std_logic_vector(7 downto 0);
+		addr	: std_logic_vector(7 downto 0);
+	end record;
+	type test_data_t is array (integer range <>) of data_rec_t;
+
+	-- Testing data for write command
+	constant test_data_wr : test_data_t(0 to 1) := (
+		( data => x"fa", addr => x"01"),
+		( data => x"aa", addr => x"21")
+	);
+
+	-- Testing data for read command
+	constant test_data_rd : test_data_t(0 to 1) := (
+		( data => x"ab", addr => x"ac"),
+		( data => x"22", addr => x"02")
+	);
+
+	-- This procedure takes the test data and sends the read record to the uart_stream_sync component.
+	-- After that, it waits for the data which will be read from the bus.
+	procedure write_data (data_in : in data_rec_t; data_out : out std_logic_vector) is
+	begin
+
+	end procedure;
+	
+	-- This procedure reads the data from the passed address and output is returned in the
+	-- data variable.
+	procedure read_data ( addr : in std_logic_vector; data_out : out std_logic_vector) is
+	begin
+
+	end procedure;
+
+	-- Genrate a random integer to max value
+	function get_random(min_v : integer ; max_v : integer) return integer is 
+		variable seed1, seed2	: positive;
+		variable rand			: real; 
+	begin
+		uniform(seed1, seed2, rand);   -- generate random number
+		return ( min_v + (integer(rand) mod max_v));
+	end function;
 
 begin
     -- ------------------------------------------------------------------------
@@ -81,6 +133,7 @@ begin
 		TX_ADDR_OUT       => tx_addr_out,
 		TX_DATA_OUT       => tx_data_out,
 		TX_DATA_OUT_VLD   => tx_data_out_vld,
+		TX_DATA_WRITE	  => tx_data_write,
 		TX_DATA_OUT_NEXT  => tx_data_out_next,
 		
 		-- APP --> UART
@@ -128,7 +181,11 @@ begin
     -- ------------------------------------------------------------------------
     -- Testbench 
 	-- ------------------------------------------------------------------------
+
 	tb_rx : process
+		variable data_out 	: std_logic_vector(7 downto 0);
+		variable data_ref	: std_logic_vector(7 downto 0);
+		variable wr_rec 	: data_rec_t;
 	begin
 		-- Initial values 
 		rx_din 				<= (others => '0');
@@ -141,17 +198,36 @@ begin
 		-- Time to drive ....
 
 		-- 1) Read test
+		for i in 0 to test_data_rd'length-1 loop
+			-- Read and check the result
+			data_ref := test_data_rd(i).data;
+			read_data(test_data_rd(i).addr, data_out);
+
+			assert test_data_rd(i).data = data_out report 
+				"tb_rx read ( i = " & integer'image(i) & "): Received (" & to_string(data_out) & ") data are not as expected data (" & to_string(data_ref) & ")." 
+				severity error;
+		end loop;
 
 		-- 2) Write test
+		for i in 0 to test_data_wr'length-1 loop
+			-- Write data test (we are just waiting to get the command)
+			wr_rec := test_data_wr(i);
+			write_data(wr_rec, data_out);
+
+			assert data_out = CMD_ACK report 
+				"tb_rx write (i = " & integer'image(i) & "): ACK wasn't received!"
+				severity error;
+		end loop;
 
 		-- End the testbench
 		wait;
 	end process;
 
 	tb_tx : process
+		variable rd_req : data_rec_t;
+		variable wr_req : data_rec_t;
 	begin
 		-- Initial values 
-		tx_data_out_next 	<= '0';
 		tx_data_in			<= (others => '0');
 		tx_data_in_vld		<= '0';
 
@@ -162,11 +238,62 @@ begin
 		-- Time to drive ....
 
 		-- 1) Read test
+		-- On TX side, we need to wait untill data are ready
+		for i in 0 to test_data_rd'length-1 loop
+			rd_req :=  test_data_rd(i);
+			-- Wait until we have a valid data read request
+			wait until (rising_edge(CLK_TX) and tx_data_out_vld = '1' and tx_data_out_next = '1');
+			-- Check if the address matches, setup the 
+			assert tx_addr_out = rd_req.addr report 
+				"tb_tx read (i = " & integer'image(i) & "): Expected address (" & to_string(rd_req.addr) &  ") doesn't match with received address (" & to_string(tx_addr_out) & ")."
+				severity error;
+			
+			assert tx_data_write = '0' report
+				"tb_tx read (i = " & integer'image(i) & "): Write command is enabled in the read mode."
+				severity error;
+
+			-- Wait untill the rising edge is detected and valid/ready signals are ready
+			tx_data_in 		<=  rd_req.data;
+			tx_data_in_vld 	<= '1';
+			wait until (rising_edge(CLK_TX) and tx_data_in_vld = '1' and tx_data_in_next = '1');
+			tx_data_in_vld  <= '0';
+		end loop;
 
 		-- 2) Write test
+		for i in 0 to test_data_wr'length-1 loop
+			-- We just need to check the write command is asserted 
+			wr_req := test_data_wr(i);
+			wait until (rising_edge(CLK_TX) and tx_data_out_vld = '1' and tx_data_out_next = '1');
+			-- Check if the address matches, setup the 
+			assert tx_addr_out = wr_req.addr report 
+				"tb_tx write (i = " & integer'image(i) & "): Expected address (" & to_string(wr_req.addr) &  ") doesn't match with received address (" & to_string(tx_addr_out) & ")."
+				severity error;
+
+			assert tx_data_write = '0' report
+				"tb_tx write (i = " & integer'image(i) & "): Read command is enabled in the write mode."
+				severity error;
+
+			assert tx_data_out = wr_req.data report
+				"tb_tx write (i = " & integer'image(i) & "): Expected data (" & to_string(wr_req.data) &  ") doesn't match with received data (" & to_string(tx_data_out) & ")."
+				severity error;
+
+		end loop;
 
 		-- End the testbench
 		wait;
+	end process;
+
+
+	-- Random destination ready signaling
+	random_tx_rdy : process
+		variable rand_wait : integer;
+	begin
+		-- Wait for a random time in high one 
+		tx_data_out_next 	<= '0';
+		wait for get_random(TX_NEXT_RDY_IDLE_MIN, TX_NEXT_RDY_IDLE_MAX) * clk_tx_period;
+		
+		tx_data_out_next 	<= '1';
+		wait for get_random(TX_NEXT_RDY_ON_MIN, TX_NEXT_RDY_ON_MAX) * clk_tx_period;
 	end process;
 
 end architecture;
