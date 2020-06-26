@@ -76,19 +76,7 @@ architecture full of testbench is
 		( data => x"22", addr => x"02")
 	);
 
-	-- This procedure takes the test data and sends the read record to the uart_stream_sync component.
-	-- After that, it waits for the data which will be read from the bus.
-	procedure write_data (data_in : in data_rec_t; data_out : out std_logic_vector) is
-	begin
-
-	end procedure;
-	
-	-- This procedure reads the data from the passed address and output is returned in the
-	-- data variable.
-	procedure read_data ( addr : in std_logic_vector; data_out : out std_logic_vector) is
-	begin
-
-	end procedure;
+	-- Functions ----------------------
 
 	shared variable seed1	: positive;
 	shared variable seed2	: positive;
@@ -188,6 +176,46 @@ begin
 		variable data_out 	: std_logic_vector(7 downto 0);
 		variable data_ref	: std_logic_vector(7 downto 0);
 		variable wr_rec 	: data_rec_t;
+
+		-- This procedure takes the test data and sends the read record to the uart_stream_sync component.
+		-- After that, it waits for the data which will be read from the bus.
+		procedure write_data (data_in : in data_rec_t; data_out : out std_logic_vector) is
+		begin
+			-- Take data to write and setup the valid signal. After that, wait until data
+			-- are taken and wait for data which incomes
+			rx_din 		<= CMD_WRITE;
+			rx_din_vld	<= '1';
+			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+	
+			rx_din		<= data_in.addr;
+			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+	
+			rx_din		<= data_in.data;
+			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1'); 	    
+			rx_din_vld <= '0';
+	
+			-- Read the returned data 
+			wait until (rising_edge(CLK_RX) and rx_dout_vld = '1'); 
+			data_out := rx_dout;
+		end procedure;
+		
+		-- This procedure reads the data from the passed address and output is returned in the
+		-- data variable.
+		procedure read_data ( addr : in std_logic_vector; data_out : out std_logic_vector) is
+		begin
+			-- Take the address and pass it on the bus with the read command
+			rx_din 		<= CMD_READ;
+			rx_din_vld	<= '1';
+			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+	
+			rx_din		<= addr;
+			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+	
+			-- Read the returned data 
+			wait until (rising_edge(CLK_RX) and rx_dout_vld = '1'); 
+			data_out := rx_dout;
+		end procedure;
+
 	begin
 		-- Initial values 
 		rx_din 				<= (others => '0');
