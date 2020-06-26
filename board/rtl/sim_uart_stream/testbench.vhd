@@ -9,6 +9,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use work.uart_sync_pkg.all;
 
 entity testbench is
 end testbench;

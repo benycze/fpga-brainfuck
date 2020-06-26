@@ -5,8 +5,10 @@
 --  LICENSE: The MIT License (MIT), please read LICENSE file
 --  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 -- -------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
+use work.uart_sync_pkg.all;
 
 entity uart_stream_sync is
   port (
@@ -50,11 +52,6 @@ end uart_stream_sync;
 architecture full of uart_stream_sync is
 
   -- Constants ------------------------
-    -- Commands to perform
-  constant CMD_WRITE  : std_logic_vector(7 downto 0) := x"00"; 
-  constant CMD_READ   : std_logic_vector(7 downto 0) := x"01";
-  constant CMD_ACK    : std_logic_vector(7 downto 0) := x"02";
-
     -- Number of synchronization stages
   constant SYNC_STAGES  : natural := 4;
 
