@@ -90,12 +90,14 @@ architecture full of testbench is
 
 	end procedure;
 
+	shared variable seed1	: positive;
+	shared variable seed2	: positive;
+
 	-- Genrate a random integer to max value
-	function get_random(min_v : integer ; max_v : integer) return integer is 
-		variable seed1, seed2	: positive;
-		variable rand			: real; 
+	impure function get_random(min_v : in integer ; max_v : in integer) return integer is 
+		variable rand : real;
 	begin
-		uniform(seed1, seed2, rand);   -- generate random number
+		uniform(seed1, seed2, rand);
 		return ( min_v + (integer(rand) mod max_v));
 	end function;
 
@@ -288,8 +290,9 @@ begin
 	random_tx_rdy : process
 		variable rand_wait : integer;
 	begin
-		-- Wait for a random time in high one 
+		-- Wait until the reset is disabled && then wait for a given time in inactive value
 		tx_data_out_next 	<= '0';
+		wait until (rising_edge(CLK_TX) and RESET_TX = '0'); 
 		wait for get_random(TX_NEXT_RDY_IDLE_MIN, TX_NEXT_RDY_IDLE_MAX) * clk_tx_period;
 		
 		tx_data_out_next 	<= '1';
