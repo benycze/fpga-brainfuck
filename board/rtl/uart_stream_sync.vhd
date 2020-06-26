@@ -40,6 +40,7 @@ entity uart_stream_sync is
     TX_ADDR_OUT       : out std_logic_vector(7 downto 0); -- Output address
     TX_DATA_OUT       : out std_logic_vector(7 downto 0); -- Output data
     TX_DATA_OUT_VLD   : out std_logic;                    -- Output data are valid
+    TX_DATA_WRITE     : out std_logic;                    -- Write command
     TX_DATA_OUT_NEXT  : in std_logic;                     -- We are able to accept new data
     
     -- APP --> UART
@@ -61,6 +62,7 @@ architecture full of uart_stream_sync is
   signal reg_data_en    : std_logic;
   signal reg_addr       : std_logic_vector(7 downto 0);
   signal reg_addr_en    : std_logic;
+  signal write_en       : std_logic;
 
   -- Signals ---------------------------
     -- Signals for transition from RX --> FSM
@@ -282,7 +284,8 @@ begin
     data_dout_rx_vld <= '0';
     reg_data_en <= '0';
     reg_addr_en <= '0';
-  
+    write_en <= '0';
+
     case( reg_state ) is
            
       when READ_ADDR => 
@@ -303,6 +306,7 @@ begin
       when WRITE_ADDR => 
             -- We are waiting to 8 bit address which will come here ... therefore, we need
             -- to enable the address register to receive the data
+            write_en <= '1';
             if(data_din_rx_vld = '1')then
               reg_addr_en <= '1';
             end if;
@@ -310,6 +314,7 @@ begin
       when WRITE_DATA => 
             -- We are waiting for data to write, in this state we are just enabling the 
             -- address register
+            write_en <= '1';
             if(data_din_rx_vld = '1')then
               reg_data_en <= '1';
             end if;
@@ -317,6 +322,7 @@ begin
       when WRITE_WAIT =>
             -- We are waiting here untill the data are taken by the component, after that
             -- we need to send the ACK command to the software
+            write_en              <= '1';
             tx_data_out_vld_out   <= '1';
             data_dout_rx          <= CMD_ACK;
             data_dout_rx_vld      <= TX_DATA_OUT_NEXT;
@@ -349,5 +355,6 @@ begin
   -- Map registers to outputs
   TX_ADDR_OUT       <= reg_addr;
   TX_DATA_OUT       <= reg_data;
+  TX_DATA_WRITE     <= write_en;
 
 end architecture;

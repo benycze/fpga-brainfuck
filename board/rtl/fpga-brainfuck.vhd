@@ -229,6 +229,7 @@ begin
         TX_DATA_OUT       => led_vector,
         TX_DATA_OUT_VLD   => led_vector_vld,
         TX_DATA_OUT_NEXT  => '1',
+        TX_DATA_WRITE     => open,
 
         -- APP --> UART
         TX_DATA_IN        => (others=>'0'),
