@@ -12,8 +12,9 @@ set_false_path -from [get_ports {RESET_BTN_N}] -to *
 # All LEDs are not interested about any timing
 set_false_path -from * -to [get_ports {LED_*}]
 
-# Constraint reset synchronizers - path to the first register is false, we don't want to analyze them
+# Constraint synchronizers - path to the first register is false, we don't want to analyze them
 set_false_path -to [get_registers {reset_synchronizer:*|sr[1]}]
+set_false_path -to [get_registers {*|bit_synchronizer:*|sr[1]}]
 
 # Setup input and output constraints
 set_output_delay -clock { CLK } -max 1.5 [get_ports {UART_TXD}]
