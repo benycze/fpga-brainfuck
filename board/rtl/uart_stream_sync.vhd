@@ -133,7 +133,7 @@ begin
   data_din_in <= RX_DIN_VLD & RX_DIN; 
 
   -- Synchronization between data and handshake unit
-  rx_din_sync_i: entity work.handshare_rdy
+  rx_handshake_rdy_i: entity work.handshake_rdy
     port map(
       -- --------------------------------
       -- Clocks & Reset

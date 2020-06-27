@@ -5,8 +5,10 @@
 --  LICENSE: The MIT License (MIT), please read LICENSE file
 --  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 -- -------------------------------------------------------------------------------
+library ieee;
+use ieee.std_logic_1164.all;
 
-entity handshare_rdy is
+entity handshake_rdy is
   port (
     -- --------------------------------
     -- Clocks & Reset
@@ -23,9 +25,9 @@ entity handshare_rdy is
 
     DATA_RDY        : out std_logic
   ) ;
-end handshare_rdy ;
+end handshake_rdy ;
 
-architecture full of handshare_rdy is
+architecture full of handshake_rdy is
 
     -- FSM ------------------------------
     type FSM_State_t is (RDY,CMT,SENDING);
@@ -49,7 +51,7 @@ begin
     next_statep:process( all )
     begin
         -- Default values
-        next_state <= 
+        next_state <= reg_state;
 
         case( reg_state ) is
         
@@ -110,5 +112,5 @@ begin
         
         end case ;
     end process ; -- out_genp
-    
+
 end architecture ; -- full
