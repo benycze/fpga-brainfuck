@@ -1,3 +1,10 @@
+# -------------------------------------------------------------------------------
+#  PROJECT: FPGA Brainfuck
+# -------------------------------------------------------------------------------
+#  AUTHORS: Pavel Benacek <pavel.benacek@gmail.com>
+#  LICENSE: The MIT License (MIT), please read LICENSE file
+#  WEBSITE: https://github.com/benycze/fpga-brainfuck/
+# -------------------------------------------------------------------------------
 
 # Clocks
 create_clock -name CLK -period 83.333 [get_ports {CLK}]
