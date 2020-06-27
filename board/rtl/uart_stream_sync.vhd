@@ -8,6 +8,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 use work.uart_sync_pkg.all;
 
 entity uart_stream_sync is
@@ -37,11 +38,11 @@ entity uart_stream_sync is
     -- UART 
     -- --------------------------------
     -- UART --> APP
-    TX_ADDR_OUT       : out std_logic_vector(7 downto 0); -- Output address
-    TX_DATA_OUT       : out std_logic_vector(7 downto 0); -- Output data
-    TX_DATA_WRITE     : out std_logic;                    -- Write command
-    TX_DATA_OUT_VLD   : out std_logic;                    -- Output data are valid
-    TX_DATA_OUT_NEXT  : in std_logic;                     -- We are able to accept new data
+    TX_ADDR_OUT       : out std_logic_vector(23 downto 0);  -- Output address
+    TX_DATA_OUT       : out std_logic_vector(7 downto 0);   -- Output data
+    TX_DATA_WRITE     : out std_logic;                      -- Write command
+    TX_DATA_OUT_VLD   : out std_logic;                      -- Output data are valid
+    TX_DATA_OUT_NEXT  : in std_logic;                       -- We are able to accept new data
     
     -- APP --> UART
     TX_DATA_IN        : in std_logic_vector(7 downto 0);  -- Input data to the application
@@ -56,15 +57,21 @@ architecture full of uart_stream_sync is
     -- Number of synchronization stages
   constant SYNC_STAGES        : natural := 4;
     -- Number of elements inside the FIFO
-  constant FIFO_RX_REQ_SIZE   : natural := 8;
+  constant FIFO_RX_REQ_SIZE   : natural := 32;
+    -- Last iteration of address write
+  constant CNT_ADDR_MAX       : integer := 2;
 
   -- Registers  -----------------------
     -- Everything in the TX stage, register for storage of data and addresses
   signal reg_data       : std_logic_vector(7 downto 0);
   signal reg_data_en    : std_logic;
-  signal reg_addr       : std_logic_vector(7 downto 0);
+  signal reg_addr       : std_logic_vector(23 downto 0);
   signal reg_addr_en    : std_logic;
   signal write_en       : std_logic;
+
+  signal cnt_addr       : unsigned(1 downto 0);
+  signal cnt_addr_en    : std_logic;
+  signal cnt_addr_rst   : std_logic;
 
   -- Signals ---------------------------
     -- Signals for transition from RX --> FSM
@@ -292,7 +299,7 @@ begin
         
       when READ_ADDR => 
             -- We are waiting to 8 bit address which will come here
-            if(data_din_rx_vld = '1')then
+            if(data_din_rx_vld = '1' and cnt_addr = CNT_ADDR_MAX)then
               next_state <= READ_NOT_TAKEN;
             end if;
 
@@ -311,8 +318,9 @@ begin
              end if;
 
       when WRITE_ADDR => 
-            -- We are waiting to 8 bit address which will come here
-            if(data_din_rx_vld = '1')then
+            -- We are waiting to 8 bit address which will come here. We will go to the next
+            -- state when we write the last address.
+            if(data_din_rx_vld = '1' and cnt_addr = CNT_ADDR_MAX)then
               next_state <= WRITE_DATA;
             end if;
 
@@ -359,20 +367,28 @@ begin
     reg_addr_en             <= '0';
     write_en                <= '0';
     data_din_fifo_rd        <= '1';
+    cnt_addr_rst            <= '0';
+    cnt_addr_en             <= '0';
 
     case( reg_state ) is
+
+      when INIT => 
+        -- We can prepare the address counter for address storage
+        cnt_addr_rst <= '1';
            
       when READ_ADDR => 
-            -- We are waiting to 8 bit address which will come here ... therefore, we need
-            -- to enable address register to receive the data
-            if(data_din_rx_vld = '1')then
-              reg_addr_en <= '1';
-            end if;
+        -- We are waiting to 8 bit address which will come here ... therefore, we need
+        -- to enable address register to receive the data. We need to enable the counter to move to the 
+        -- next index.
+        if(data_din_rx_vld = '1')then
+          reg_addr_en <= '1';
+          cnt_addr_en <= '1';
+        end if;
 
       when READ_NOT_TAKEN => 
-      -- Read reaquest is ready to be processed here.
-      -- We are still waiting on the following unit if it takes the command. In such situation,
-      -- we are rady to accept data, send data and we have to copy the output.
+        -- Read reaquest is ready to be processed here.
+        -- We are still waiting on the following unit if it takes the command. In such situation,
+        -- we are rady to accept data, send data and we have to copy the output.
         data_dout_rx          <= TX_DATA_IN;
         data_dout_rx_vld      <= TX_DATA_IN_VLD;
         tx_data_out_vld_out   <= '1'; -- We are asserting the output
@@ -395,12 +411,14 @@ begin
             data_din_fifo_rd      <= '0';
 
       when WRITE_ADDR => 
-            -- We are waiting to 8 bit address which will come here ... therefore, we need
-            -- to enable the address register to receive the data
-            write_en <= '1';
-            if(data_din_rx_vld = '1')then
-              reg_addr_en <= '1';
-            end if;
+          -- We are waiting to 8 bit address which will come here ... therefore, we need
+          -- to enable the address register to receive the data. We need to enable the counter to move to the 
+          -- next index.
+          write_en <= '1';
+          if(data_din_rx_vld = '1')then
+            reg_addr_en <= '1';
+            cnt_addr_en <= '1';
+          end if;
 
       when WRITE_DATA => 
             -- We are waiting for data to write, in this state we are just enabling the 
@@ -435,8 +453,22 @@ begin
   end process;
 
   -- --------------------------------------------------------------------------
-  -- Output registers 
+  -- Output registers & counters
   -- --------------------------------------------------------------------------
+
+  addr_cntp : process( TX_CLK )
+  begin
+    if rising_edge(TX_CLK) then
+      if(TX_RESET = '1' or cnt_addr_rst = '1')then
+        cnt_addr <= (others => '0');
+      else
+        if (cnt_addr_en = '1') then
+          cnt_addr <= cnt_addr + 1;
+        end if ;
+      end if;
+    end if ;
+  end process ; -- addr_cntp
+
   data_regp:process(TX_CLK)
   begin
     if(rising_edge(TX_CLK))then
@@ -450,7 +482,12 @@ begin
   begin
     if(rising_edge(TX_CLK))then
       if(reg_addr_en = '1')then
-        reg_addr <= data_din_rx;
+        case( cnt_addr ) is
+          when "00" => reg_addr(7 downto 0)   <= data_din_rx;
+          when "01" => reg_addr(15 downto 8)  <= data_din_rx;
+          when "10" => reg_addr(23 downto 16) <= data_din_rx;
+          when others => null;
+        end case ;
       end if;
     end if;
   end process ; -- addr_regp
