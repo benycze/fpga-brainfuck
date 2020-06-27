@@ -2,7 +2,7 @@
 -- PROJECT: FPGA Brainfuck
 --------------------------------------------------------------------------------
 -- MODULE:  TESTBANCH OF UART TOP MODULE
--- AUTHORS: Jakub Cabal <jakubcabal@gmail.com>
+-- AUTHORS: Pavel Benacek <pavel.benacek@gmail.com>
 -- LICENSE: The MIT License (MIT), please read LICENSE file
 -- WEBSITE: https://github.com/jakubcabal/uart-for-fpga
 --------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ architecture full of testbench is
 	signal rx_dout         		: std_logic_vector(7 downto 0);
 	signal rx_dout_vld 			: std_logic;
 	signal rx_frame_error 		: std_logic;
-	signal tx_addr_out 			: std_logic_vector(7 downto 0);
+	signal tx_addr_out 			: std_logic_vector(23 downto 0);
 	signal tx_data_out 			: std_logic_vector(7 downto 0);
 	signal tx_data_write		: std_logic;
 	signal tx_data_out_vld		: std_logic;
@@ -60,34 +60,34 @@ architecture full of testbench is
 	-- Testing data ---------------------------------------
 	type data_rec_t is record
 		data	: std_logic_vector(7 downto 0);
-		addr	: std_logic_vector(7 downto 0);
+		addr	: std_logic_vector(23 downto 0);
 	end record;
 	type test_data_t is array (integer range <>) of data_rec_t;
 
 	-- Testing data for write command
 	constant test_data_wr : test_data_t(0 to 8) := (
-		( data => x"fa", addr => x"01"),
-		( data => x"aa", addr => x"21"),
-		( data => x"ee", addr => x"24"),
-		( data => x"ab", addr => x"28"),
-		( data => x"01", addr => x"21"),
-		( data => x"ee", addr => x"02"),
-		( data => x"de", addr => x"03"),
-		( data => x"ad", addr => x"88"),
-		( data => x"be", addr => x"ff")
+		( data => x"fa", addr => x"010203"),
+		( data => x"aa", addr => x"210203"),
+		( data => x"ee", addr => x"240203"),
+		( data => x"ab", addr => x"280203"),
+		( data => x"01", addr => x"210203"),
+		( data => x"ee", addr => x"020203"),
+		( data => x"de", addr => x"030203"),
+		( data => x"ad", addr => x"880203"),
+		( data => x"be", addr => x"ff0203")
 	);
 
 	-- Testing data for read command
 	constant test_data_rd : test_data_t(0 to 8) := (
-		( data => x"ab", addr => x"ac"),
-		( data => x"22", addr => x"02"),
-		( data => x"cc", addr => x"ab"),
-		( data => x"33", addr => x"03"),
-		( data => x"44", addr => x"af"),
-		( data => x"55", addr => x"09"),
-		( data => x"88", addr => x"ff"),
-		( data => x"ac", addr => x"fa"),
-		( data => x"af", addr => x"ba")
+		( data => x"ab", addr => x"ac0203"),
+		( data => x"22", addr => x"020203"),
+		( data => x"cc", addr => x"ab0203"),
+		( data => x"33", addr => x"030203"),
+		( data => x"44", addr => x"af0203"),
+		( data => x"55", addr => x"090203"),
+		( data => x"88", addr => x"ff0203"),
+		( data => x"ac", addr => x"fa0203"),
+		( data => x"af", addr => x"ba0203")
 	);
 
 	-- Functions ----------------------
@@ -203,8 +203,11 @@ begin
 			rx_din_vld	<= '1';
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
 	
-			rx_din		<= data_in.addr;
-			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			-- Send three parts of the address (from LSB bits to MSB bits)
+			for j in 0 to 2 loop
+				rx_din		<= data_in.addr((j+1)*8-1 downto j*8);
+				wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			end loop;
 	
 			rx_din		<= data_in.data;
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1'); 	    
@@ -226,8 +229,11 @@ begin
 			rx_din_vld	<= '1';
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
 	
-			rx_din		<= addr;
-			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			-- Send three parts of the MSB address
+			for j in 0 to 2 loop
+				rx_din		<= addr((j+1)*8-1 downto j*8);
+				wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			end loop;
 			rx_din_vld <= '0';
 	
 			-- Read the returned data 
