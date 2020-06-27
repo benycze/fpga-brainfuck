@@ -68,6 +68,7 @@ architecture full of uart_stream_sync is
     -- Signals for transition from RX --> FSM
   signal data_din_in      : std_logic_vector(8 downto 0);
   signal data_din_out     : std_ulogic_vector(8 downto 0);
+  signal data_din_sent    : std_logic;
   signal data_din_sending : std_logic;
   signal data_din_out_vld : std_logic;
 
@@ -120,16 +121,36 @@ begin
       Tx_data     => std_ulogic_vector(data_din_in),
       Send_data   => RX_DIN_VLD,
       Sending     => data_din_sending,
-      Data_sent   => open,
+      Data_sent   => data_din_sent,
 
       --# {{Receive port}}
       Rx_data   => data_din_out,
       New_data  => data_din_out_vld
     );
 
+
   -- Pack data and RDY signal
   data_din_in <= RX_DIN_VLD & RX_DIN; 
-  RX_DIN_RDY  <= not(data_din_sending);
+
+  -- Synchronization between data and handshake unit
+  rx_din_sync_i: entity work.handshare_rdy
+    port map(
+      -- --------------------------------
+      -- Clocks & Reset
+      -- --------------------------------
+      CLK      => RX_CLK,
+      RESET    => RX_RESET,
+  
+      -- --------------------------------
+      -- Input & output
+      -- --------------------------------
+      DATA_SENT       => data_din_sent,
+      DATA_SENDING    => data_din_sending,
+      VLD             => RX_DIN_VLD,
+  
+      DATA_RDY        => RX_DIN_RDY
+    ) ;
+
 
   -- Unpack data
   data_din_rx     <= std_logic_vector(data_din_out(7 downto 0));

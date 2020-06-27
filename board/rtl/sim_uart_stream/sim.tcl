@@ -14,6 +14,7 @@ set TBENCH testbench.vhd
 set COMP_LIST [list \
     $PROJ_BASE/rtl_lib/vhdl-extras/rtl/extras/synchronizing.vhdl \
     $PROJ_BASE/rtl/uart_stream_sync_pkg.vhd \
+    $PROJ_BASE/rtl/handshake_rdy.vhd \
     $PROJ_BASE/rtl/uart_stream_sync.vhd \
 ]
 
