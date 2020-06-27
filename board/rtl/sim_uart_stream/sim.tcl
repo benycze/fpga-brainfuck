@@ -36,4 +36,5 @@ vsim work.testbench
 
 # Setup and start simulation
 add wave sim:/testbench/uut/*
+add wave -group RX_HANDSHAKE_RDY sim:/testbench/uut/rx_handshake_rdy_i/*
 run 10 us

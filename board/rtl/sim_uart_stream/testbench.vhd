@@ -65,15 +65,29 @@ architecture full of testbench is
 	type test_data_t is array (integer range <>) of data_rec_t;
 
 	-- Testing data for write command
-	constant test_data_wr : test_data_t(0 to 1) := (
+	constant test_data_wr : test_data_t(0 to 8) := (
 		( data => x"fa", addr => x"01"),
-		( data => x"aa", addr => x"21")
+		( data => x"aa", addr => x"21"),
+		( data => x"ee", addr => x"24"),
+		( data => x"ab", addr => x"28"),
+		( data => x"01", addr => x"21"),
+		( data => x"ee", addr => x"02"),
+		( data => x"de", addr => x"03"),
+		( data => x"ad", addr => x"88"),
+		( data => x"be", addr => x"ff")
 	);
 
 	-- Testing data for read command
-	constant test_data_rd : test_data_t(0 to 1) := (
+	constant test_data_rd : test_data_t(0 to 8) := (
 		( data => x"ab", addr => x"ac"),
-		( data => x"22", addr => x"02")
+		( data => x"22", addr => x"02"),
+		( data => x"cc", addr => x"ab"),
+		( data => x"33", addr => x"03"),
+		( data => x"44", addr => x"af"),
+		( data => x"55", addr => x"09"),
+		( data => x"88", addr => x"ff"),
+		( data => x"ac", addr => x"fa"),
+		( data => x"af", addr => x"ba")
 	);
 
 	-- Functions ----------------------
@@ -207,13 +221,14 @@ begin
 		begin
 			-- Take the address and pass it on the bus with the read command
 			wait until rising_edge(CLK_RX);
-			
+
 			rx_din 		<= CMD_READ;
 			rx_din_vld	<= '1';
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
 	
 			rx_din		<= addr;
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			rx_din_vld <= '0';
 	
 			-- Read the returned data 
 			wait until (rising_edge(CLK_RX) and rx_dout_vld = '1'); 
@@ -226,8 +241,8 @@ begin
 		rx_din_vld 			<= '0';
 
 		-- Wait untill the process is being reseted
-		wait until rising_edge(CLK_RX);
 		wait for RESET_RX_WAIT_AFTER * clk_rx_period;
+		wait until rising_edge(CLK_RX);
 
 		-- Time to drive ....
 
@@ -242,6 +257,8 @@ begin
 				severity error;
 		end loop;
 
+		assert false report "tb_rx : Read tests are done!" severity note;
+
 		-- 2) Write test
 		for i in 0 to test_data_wr'length-1 loop
 			-- Write data test (we are just waiting to get the command)
@@ -252,6 +269,8 @@ begin
 				"tb_rx write (i = " & integer'image(i) & "): ACK wasn't received!"
 				severity error;
 		end loop;
+
+		assert false report "tb_rx : Write tests are done!" severity note;
 
 		-- End the testbench
 		wait;
@@ -266,8 +285,8 @@ begin
 		tx_data_in_vld		<= '0';
 
 		-- Wait untill the process is being reseted
-		wait until rising_edge(CLK_TX);
 		wait for RESET_TX_WAIT_AFTER * clk_tx_period;
+		wait until rising_edge(CLK_TX);
 
 		-- Time to drive ....
 
@@ -276,7 +295,7 @@ begin
 		for i in 0 to test_data_rd'length-1 loop
 			rd_req :=  test_data_rd(i);
 			-- Wait until we have a valid data read request
-			wait until (rising_edge(CLK_TX) and tx_data_out_vld = '1' and tx_data_out_next = '1');
+			wait until (rising_edge(CLK_TX) and tx_data_out_vld = '1');
 			-- Check if the address matches, setup the 
 			assert tx_addr_out = rd_req.addr report 
 				"tb_tx read (i = " & integer'image(i) & "): Expected address (" & to_string(rd_req.addr) &  ") doesn't match with received address (" & to_string(tx_addr_out) & ")."
@@ -292,6 +311,8 @@ begin
 			wait until (rising_edge(CLK_TX) and tx_data_in_vld = '1' and tx_data_in_next = '1');
 			tx_data_in_vld  <= '0';
 		end loop;
+		
+		assert false report "tb_tx : Read tests are done!" severity note;
 
 		-- 2) Write test
 		for i in 0 to test_data_wr'length-1 loop
@@ -303,7 +324,7 @@ begin
 				"tb_tx write (i = " & integer'image(i) & "): Expected address (" & to_string(wr_req.addr) &  ") doesn't match with received address (" & to_string(tx_addr_out) & ")."
 				severity error;
 
-			assert tx_data_write = '0' report
+			assert tx_data_write = '1' report
 				"tb_tx write (i = " & integer'image(i) & "): Read command is enabled in the write mode."
 				severity error;
 
@@ -311,7 +332,10 @@ begin
 				"tb_tx write (i = " & integer'image(i) & "): Expected data (" & to_string(wr_req.data) &  ") doesn't match with received data (" & to_string(tx_data_out) & ")."
 				severity error;
 
+			wait until rising_edge(CLK_TX);
 		end loop;
+
+		assert false report "tb_tx : Write tests are done!" severity note;
 
 		-- End the testbench
 		wait;
