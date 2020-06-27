@@ -183,6 +183,8 @@ begin
 		begin
 			-- Take data to write and setup the valid signal. After that, wait until data
 			-- are taken and wait for data which incomes
+			wait until rising_edge(CLK_RX);
+
 			rx_din 		<= CMD_WRITE;
 			rx_din_vld	<= '1';
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
@@ -204,6 +206,8 @@ begin
 		procedure read_data ( addr : in std_logic_vector; data_out : out std_logic_vector) is
 		begin
 			-- Take the address and pass it on the bus with the read command
+			wait until rising_edge(CLK_RX);
+			
 			rx_din 		<= CMD_READ;
 			rx_din_vld	<= '1';
 			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
