@@ -13,6 +13,11 @@ pip3 --user PySerial
 The Python library for communication with engine via the UART end-point is 
 located in the **io** folder.
 
+The configuration of the UART is following:
+
+* **Baudrate** - 115200
+* **Parity Bit** - none
+
 ## Table of commands
 
 Each command is the 8-bit value.
