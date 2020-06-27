@@ -127,6 +127,9 @@ set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_
 set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_board_design_signal_integrity
 set_global_assignment -name EDA_GENERATE_FUNCTIONAL_NETLIST OFF -section_id eda_board_design_boundary_scan
 set_global_assignment -name VHDL_FILE "rtl_lib/vhdl-extras/rtl/extras/synchronizing.vhdl"
+set_global_assignment -name VHDL_FILE "rtl_lib/vhdl-extras/rtl/extras/sizing.vhdl"
+set_global_assignment -name VHDL_FILE "rtl_lib/vhdl-extras/rtl/extras/memory.vhdl"
+set_global_assignment -name VHDL_FILE "rtl_lib/vhdl-extras/rtl/extras/fifos.vhdl"
 set_global_assignment -name SDC_FILE constraints.sdc
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_tx.vhd"
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_rx.vhd"
