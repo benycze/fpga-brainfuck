@@ -30,6 +30,7 @@ The configuration of the UART is following:
 
 * **Baudrate** - 115200
 * **Parity Bit** - none
+* **HW control** - none, should be disabled
 
 ## Table of commands
 
