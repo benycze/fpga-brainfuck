@@ -80,7 +80,7 @@ architecture full of fpga_top is
     -- --------------------------------
     -- Demo signals for registers 
     -- --------------------------------
-    constant REG_ADDR_WIDTH     : integer := 5;
+    constant REG_ADDR_WIDTH     : integer := 8;
     constant REG_ARR_SIZE       : integer := 2**REG_ADDR_WIDTH;
 
     signal reg_arr_addr      : std_logic_vector(23 downto 0);
