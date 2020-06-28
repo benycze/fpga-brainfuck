@@ -10,7 +10,7 @@ You can use the [Bluespec Compiler Docker](https://github.com/benycze/bsc-docker
 The project is using the following open-source libraries:
 
 * <https://github.com/jakubcabal/uart-for-fpga> - project with the implementation of the UART module which allows communication between PC and FPGA core
-* <https://github.com/jakubcabal/rmii-firewall-fpga> - ASFIFO component
+* <https://github.com/jakubcabal/rmii-firewall-fpga> - FIFO components (ASFIFO, FIFO)
 * <https://github.com/kevinpt/vhdl-extras/blob/master/rtl/extras/synchronizing.vhdl> - project with helping componets (mainly used the library for data synchronization across clock domains)
 
 To clone the repository, run:
