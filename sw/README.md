@@ -10,8 +10,21 @@ You need to install the [PySerial](https://pyserial.readthedocs.io/en/latest/sho
 pip3 --user PySerial
 ```
 
-The Python library for communication with engine via the UART end-point is 
-located in the **io** folder.
+If you don't want to run the script as _root_, add yourself to the group which has access to serial line. On my system, Debian 10, the block device `/dev/ttyUSB0` has following 
+righths:
+
+```bash
+crw-rw---- 1 root dialout 188,  0 Jun 27 19:15 /dev/ttyUSB0
+```
+
+Therefore, I have to add my accout to the group `dialout` (after that, you have to login and logout to be part of the new group or you can run the `su` tool if don't want to logout from your session):
+
+```bash
+sudo usermod -a -G dialout $USER
+sudo su -l $USER -
+```
+
+The Python library for communication with engine via the UART end-point is located in the **io** folder.
 
 The configuration of the UART is following:
 
