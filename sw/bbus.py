@@ -94,7 +94,7 @@ def start_test(dev,awidth):
     """
     print("Test mode has been detected. The rest of the command is ignored.\n")
     print(" * Tested address space => {}".format(awidth))
-    print(" * Test prints the '+' characted after every {}".format(TEST_DOT_CNT))
+    print(" * Test prints the '+' characted after every {} operations.".format(TEST_DOT_CNT))
     print(" * USE CTRL + C to stop the testing process.\n\n")
 
     signal.signal(signal.SIGINT, interupt_signal_handler)
@@ -140,8 +140,9 @@ def start_test(dev,awidth):
     hour,mins   = divmod(mins,60)
     operations_per_sec = float(succ_test)/float(diff)
 
+    print("\n\n################################################")
     print("Performed tests: {}".format(succ_test))
-    print("Operations/sec: {}".format(operations_per_sec))
+    print("Average operations/sec: {}".format(operations_per_sec))
     print("Runtime: {}h {}m {}s".format(int(hour),int(mins),int(sec)))
 
 def write(dev,addr,data):
