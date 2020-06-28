@@ -22,7 +22,7 @@ vsim -do sim.tcl
 
 ## Input/Outputs
 
-The configuration of UART (baudrate,etc.) is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw). 
+The configuration of UART (baudrate,etc.) is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw). Address space is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw#address-space) 
 
 | Input/Output      | Purpose           |  PIN  |
 |-------------------|-------------------|-------|
@@ -37,4 +37,4 @@ Clock in the design:
 * CLK_REF - refernce clock signal, 12 MHz
 * CLK_C0 - clocks from the PLL, 100 MHz
 
-Each clock domain has a stand-alone reset signal which is hold for several clock cycles.
+Each clock domain has a stand-alone reset signal which is hold for several clock cycles. 
