@@ -95,12 +95,14 @@ def start_test(dev,awidth):
     print("Test mode has been detected. The rest of the command is ignored.\n")
     print(" * Tested address space => {}".format(awidth))
     print(" * Test prints the '+' characted after every {} operations.".format(TEST_DOT_CNT))
+    print(" * Test starts the '#' after we process the whole address space.")
     print(" * USE CTRL + C to stop the testing process.\n\n")
 
     signal.signal(signal.SIGINT, interupt_signal_handler)
     tmp_addr    = 0x0
     tmp_data    = []
     succ_test   = 0
+    succ_addrs  = 0
     start_time  = int(time.time())
     max_addr    = (2**awidth)-1
 
@@ -130,6 +132,8 @@ def start_test(dev,awidth):
         # address iff we reached the maximal one 
         if tmp_addr == max_addr:
             tmp_addr = 0
+            print("#",end='',flush=True)
+            succ_addrs = succ_addrs + 1
         else:
             tmp_addr = tmp_addr + 1
 
@@ -140,9 +144,10 @@ def start_test(dev,awidth):
     hour,mins   = divmod(mins,60)
     operations_per_sec = float(succ_test)/float(diff)
 
-    print("\n\n################################################")
+    print("\n\n================================================")
     print("Performed tests: {}".format(succ_test))
     print("Average operations/sec: {}".format(operations_per_sec))
+    print("Complete addres spaces: {}".format(succ_addrs))
     print("Runtime: {}h {}m {}s".format(int(hour),int(mins),int(sec)))
 
 def write(dev,addr,data):
