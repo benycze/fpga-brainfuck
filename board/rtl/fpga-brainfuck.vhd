@@ -275,7 +275,7 @@ begin
     reg : process( clk_c0 )
     begin
         if(rising_edge(clk_c0))then
-            if(sig_en = '1' and reg_arr_write = '1')then
+            if(sig_en = '1' and reg_arr_write = '1' and reg_arr_vld = '1' )then
                 reg_arr(i) <= reg_arr_data;
             end if;
         end if;
@@ -289,7 +289,7 @@ begin
         if(rising_edge(clk_c0))then
             if((reg_arr_rd = '1' and reg_arr_rd_next = '1') or reset_c0 = '1')then
                 reg_arr_rd <= '0';
-            elsif(reg_arr_write = '1')then
+            elsif(reg_arr_write = '0' and reg_arr_vld = '1' )then
                 reg_arr_rd      <= '1';
                 reg_arr_rd_addr <= reg_arr_addr(REG_ADDR_WIDTH-1 downto 0);
             end if;
