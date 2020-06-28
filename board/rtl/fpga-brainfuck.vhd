@@ -75,11 +75,26 @@ architecture full of fpga_top is
     signal uart_rx_dout_vld     : std_logic;
     signal uart_rx_frame_error  : std_logic;
 
-    -- Demo signals
-    signal led_vector_addr      : std_logic_vector(23 downto 0);
-    signal led_vector           : std_logic_vector(7 downto 0);
-    signal led_vector_vld       : std_logic;
-    signal reg_led_vector       : std_logic_vector(7 downto 0);
+    signal design_ready         : std_logic;
+
+    -- --------------------------------
+    -- Demo signals for registers 
+    -- --------------------------------
+    constant REG_ADDR_WIDTH     : integer := 5;
+    constant REG_ARR_SIZE       : integer := 2**REG_ADDR_WIDTH;
+
+    signal reg_arr_addr      : std_logic_vector(23 downto 0);
+    signal reg_arr_data      : std_logic_vector(7 downto 0);
+    signal reg_arr_vld       : std_logic;
+    signal reg_arr_write     : std_logic;
+
+    signal reg_arr_rd        : std_logic;
+    signal reg_arr_rd_addr   : std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+    signal reg_arr_rd_next   : std_logic;
+    signal reg_arr_rd_data   : std_logic_vector(7 downto 0);
+
+    type reg_array_t is array (0 to REG_ARR_SIZE-1) of std_logic_vector(7 downto 0);
+    signal reg_arr : reg_array_t;
 
 begin
 
@@ -172,6 +187,10 @@ begin
     reset_c0    <= not(reset_cnt_c0(RESET_CNT_WIDTH-1));
     reset_ref   <= not(reset_cnt_ref(RESET_CNT_WIDTH-1));
 
+    -- Design is ready iff everything is reseted (and reset is low) - we are using
+    -- signals from different clock domains but it doen't matter it is just a LED light
+    design_ready <= not(reset_c0 or reset_ref);
+
     -- ------------------------------------------------------------------------
     -- UART connection -- it is passed to the 12MHz clock domain
     -- ------------------------------------------------------------------------
@@ -228,40 +247,69 @@ begin
         -- UART 
         -- --------------------------------
         -- UART --> APP
-        TX_ADDR_OUT       => open,
-        TX_DATA_OUT       => led_vector,
-        TX_DATA_OUT_VLD   => led_vector_vld,
+        TX_ADDR_OUT       => reg_arr_addr,
+        TX_DATA_OUT       => reg_arr_data,
+        TX_DATA_OUT_VLD   => reg_arr_vld,
         TX_DATA_OUT_NEXT  => '1',
-        TX_DATA_WRITE     => open,
+        TX_DATA_WRITE     => reg_arr_write,
 
         -- APP --> UART
-        TX_DATA_IN        => (others=>'0'),
-        TX_DATA_IN_VLD    => '0',
-        TX_DATA_IN_NEXT   => open
+        TX_DATA_IN        => reg_arr_rd_data,
+        TX_DATA_IN_VLD    => reg_arr_rd,
+        TX_DATA_IN_NEXT   => reg_arr_rd_next
         ) ;
 
-        -- Register for the storage of LED vector
-        led_regp : process( clk_c0 )
-        begin
-            if(rising_edge(clk_c0))then
-                if(reset_c0 = '1')then
-                    reg_led_vector <= (others=>'0');
-                else
-                    if(led_vector_vld = '1')then
-                        reg_led_vector <= led_vector;
-                    end if;
-                end if;
-            end if;
-        end process ; -- led_regp
+    -- ------------------------------------------------------------------------
+    -- Demo application
+    -- ------------------------------------------------------------------------
 
-        -- Demo output LED connections
-        LED_0   <= reg_led_vector(0);
-        LED_1   <= reg_led_vector(1);
-        LED_2   <= reg_led_vector(2);
-        LED_3   <= reg_led_vector(3);
-        LED_4   <= reg_led_vector(4);
-        LED_5   <= reg_led_vector(5);
-        LED_6   <= reg_led_vector(6);
-        LED_7   <= reg_led_vector(7);
+    -- Generatio of write registers
+    wr_regp:for i in 0 to REG_ARR_SIZE-1 generate
+        signal sig_en : std_logic;
+    begin
+
+    -- Generate the enable signal for given 
+    sig_en <= '1' when std_logic_vector(to_unsigned(i,REG_ADDR_WIDTH)) = reg_arr_addr(REG_ADDR_WIDTH-1 downto 0) 
+            else '0';
+
+    reg : process( clk_c0 )
+    begin
+        if(rising_edge(clk_c0))then
+            if(sig_en = '1' and reg_arr_write = '1')then
+                reg_arr(i) <= reg_arr_data;
+            end if;
+        end if;
+    end process ; -- reg
+
+    end generate;
+
+    -- Strobe read address
+    reg_rdp : process( clk_c0 )
+    begin
+        if(rising_edge(clk_c0))then
+            if((reg_arr_rd = '1' and reg_arr_rd_next = '1') or reset_c0 = '1')then
+                reg_arr_rd <= '0';
+            elsif(reg_arr_write = '1')then
+                reg_arr_rd      <= '1';
+                reg_arr_rd_addr <= reg_arr_addr(REG_ADDR_WIDTH-1 downto 0);
+            end if;
+        end if;        
+    end process ; -- reg_rdp
+
+    reg_arr_rd_data <= reg_arr(to_integer(unsigned(reg_arr_addr)));
+
+    -- ------------------------------------------------------------------------
+    -- Mapping of output signals
+    -- ------------------------------------------------------------------------
+
+    -- Demo output LED connections
+    LED_0   <= design_ready;
+    LED_1   <= '0';
+    LED_2   <= '0';
+    LED_3   <= '0';
+    LED_4   <= '0';
+    LED_5   <= '0';
+    LED_6   <= '0';
+    LED_7   <= '0';
 
 end architecture;

@@ -24,3 +24,17 @@ vsim -do sim.tcl
 
 The configuration of UART (baudrate,etc.) is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw). 
 
+| Input/Output      | Purpose           |  PIN  |
+|-------------------|-------------------|-------|
+| USER_BTN          | Reset of the desgign | PIN_N6 |
+| LED0              | Reset done | PIN_M6 |
+| UART_TXD          | UART TXD channel | PIN_T7 |
+| UART_RXD          | UART_RXD channel | PIN_R7 |
+| CLK               | Reference 20 MHz | PIN_M2 |
+
+Clock in the design:
+
+* CLK_REF - refernce clock signal, 12 MHz
+* CLK_C0 - clocks from the PLL, 100 MHz
+
+Each clock domain has a stand-alone reset signal which is hold for several clock cycles.
