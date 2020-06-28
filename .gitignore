@@ -1,4 +1,8 @@
 */db/
-*/greybox_tmp/
+**/greybox_tmp/
 *.qws
 *.bak
+**/incremental_db/*
+*.*.swp
+**/__pycache__/*
+**/output_files/*
