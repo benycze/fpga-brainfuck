@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 
 # -------------------------------------------------------------------------------
 #  PROJECT: FPGA Brainfuck
@@ -17,7 +16,6 @@ class BrainfuckIO(object):
     
     Brief usage:
         * Create the component  - uart = BrainfuckIO("/dev/ttyUSB0",115200) where 115200 is the baudrate
-        * Call the open method to open the connection - uart.open()
         * Use read/write as you need - data = uart.read(addr) or uart.write(addr,data).
         * Close the connection - uart.close()
 
@@ -33,21 +31,17 @@ class BrainfuckIO(object):
     # Maximal possible address
     MAX_ADDR = (2**24)-1
 
-
-    def __init__(self, port, baudrate):
+    def __init__(self, port="/dev/ttyUSB0", baudrate=115200,rtscts=False,dsrdtr=False):
         """
         Initializer for the BrainfuckIO component
+
+        Parameters:
+            * port - port to open, the default value is /dev/ttyUSB0
+            * baudrate - used baudrate, the default value is 115200
         """
         self.port       = port
         self.baudrate   = baudrate
-        self.uart       = None
-
-    def open(self):
-        """
-        Open the UART port
-        """
-        self.uart = serial.Serial(self.port, self.baudrate)
-        self.uart.open()
+        self.uart       = serial.Serial(port,baudrate,rtscts=False,dsrdtr=False)
 
     def close(self):
         # Check if we have something to close
@@ -69,7 +63,7 @@ class BrainfuckIO(object):
         self.uart.write(cmd_to_write)
 
         # 2) Convert address to 24-bits, slice it on bytes and send it down
-        __check_and_send_address(addr)
+        self.__check_and_send_address(addr)
 
         # 3) Convert data to 8-bit 
         if(len(data) > 1):
@@ -97,7 +91,7 @@ class BrainfuckIO(object):
         self.uart.write(cmd_to_write)
 
         # 2) Send three 8-bít chunks
-        __check_and_send_address(addr)
+        self.__check_and_send_address(addr)
 
         # 3) Read data and return them 
         read_val = self.uart.read()
