@@ -108,7 +108,6 @@ def start_test(dev,awidth):
         # Generate random data
         rnd_input = random.randint(0,255)
         tmp_data = int_to_bytes(rnd_input)
-        print(hex(rnd_input))
         # Write & read the data
         write(dev,tmp_addr,tmp_data)
         tmp_read = read(dev,tmp_addr)
