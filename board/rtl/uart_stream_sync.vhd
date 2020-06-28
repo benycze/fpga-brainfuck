@@ -11,6 +11,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.uart_sync_pkg.all;
 
+-- TODO:
+-- * Implement the error handling when the RX_DIM_FRAME_ERROR is asserted
+
 entity uart_stream_sync is
   port (
     -- --------------------------------
@@ -75,7 +78,6 @@ architecture full of uart_stream_sync is
   signal cnt_addr_rst   : std_logic;
 
   -- Signals ---------------------------
-  signal data_din_fifo_in_vld : std_logic;
   signal data_din_rx          : std_logic_vector(7 downto 0);
   signal data_din_rx_vld      : std_logic;
   signal data_din_rx_rd       : std_logic;
@@ -100,8 +102,6 @@ begin
   -- --------------------------------------------------------------------------
   -- Transfer serial signals from the UART clock domain to FSM clock doimain
   -- --------------------------------------------------------------------------
-  -- Preparation of input data (all error frames are filtered out)
-  data_din_fifo_in_vld  <= (RX_DIN_VLD and not(RX_DIN_FRAME_ERROR));
 
   -- RX ---> TX (FSM)
   rx_asfifo_i : entity work.ASFIFO
@@ -114,7 +114,7 @@ begin
         WR_CLK      => RX_CLK,
         WR_RST      => RX_RESET,
         WR_DATA     => RX_DIN,
-        WR_REQ      => data_din_fifo_in_vld,
+        WR_REQ      => RX_DIN_VLD,
         WR_FULL     => open,
         -- FIFO READ INTERFACE
         RD_CLK      => TX_CLK,
