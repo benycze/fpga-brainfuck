@@ -67,6 +67,39 @@ The process of data writing is following:
 5. Send the 8-bit data to write
 6. Wait until the _CMD_ACK_ is received
 
+## bbus tool
+
+The bbus tool is a lightweight tool written in Python3 and it allows you writting and reading from the FPGA via the UART. It is using the implementation of the Brainfuck_io library provided in the **io** folder.
+
+Example of reading from the address 0xab:
+
+```bash
+./bbus.py 0xab
+```
+
+Example of writing to address 0xbb, data 0x1c:
+
+```bash
+./bbus.py 0xbb 0x1c
+```
+
+The tool also allows you to write multiple bytes. In this mode, the passed address is used as the target address for the first byte (7 downto 0). So for example, if you want to write 0x010203 to address 0x2:
+
+1. Byte 0x03 to address 0x2
+2. Byte 0x02 to address 0x3
+3. Byte 0x01 to address 0x1
+
+```bash
+./bbus.py 0x2 0x010203
+```
+
+The tool is also capable to test the while address space with writing of random data to incrising
+destination address (the passed number is the address bit-width):
+
+```bash
+./bbus.py --test=8
+```
+
 ## Address space
 
 TODO
