@@ -95,7 +95,7 @@ def start_test(dev,awidth):
     print("Test mode has been detected. The rest of the command is ignored.\n")
     print(" * Tested address space => {}".format(awidth))
     print(" * Test prints the '+' characted after every {} operations.".format(TEST_DOT_CNT))
-    print(" * Test starts the '#' after we process the whole address space.")
+    print(" * Test prints the '#' after we process the whole address space.")
     print(" * USE CTRL + C to stop the testing process.\n\n")
 
     signal.signal(signal.SIGINT, interupt_signal_handler)
