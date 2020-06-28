@@ -76,6 +76,7 @@ architecture full of fpga_top is
     signal uart_rx_frame_error  : std_logic;
 
     -- Demo signals
+    signal led_vector_addr      : std_logic_vector(23 downto 0);
     signal led_vector           : std_logic_vector(7 downto 0);
     signal led_vector_vld       : std_logic;
     signal reg_led_vector       : std_logic_vector(7 downto 0);
@@ -145,7 +146,7 @@ begin
                 reset_cnt_c0  <= (others=>'0');
             else
                 -- Reset needs to be asserted (one clock cycle shoudl be enough)
-                if(reset_cnt_c0(6) = '0')then
+                if(reset_cnt_c0(RESET_CNT_WIDTH-1) = '0')then
                     reset_cnt_c0 <= reset_cnt_c0 + 1;
                 end if;
             end if;
@@ -160,7 +161,7 @@ begin
                 reset_cnt_ref  <= (others=>'0');
             else
                 -- Reset needs to be asserted (one clock cycle shoudl be enough)
-                if(reset_cnt_ref(6) = '0')then
+                if(reset_cnt_ref(RESET_CNT_WIDTH-1) = '0')then
                     reset_cnt_ref <= reset_cnt_ref + 1;
                 end if;
             end if;
@@ -193,6 +194,7 @@ begin
         DOUT        => uart_rx_dout,
         DOUT_VLD    => uart_rx_dout_vld,
         FRAME_ERROR => uart_rx_frame_error,
+
         -- USER DATA INPUT INTERFACE
         DIN         => uart_rx_din,
         DIN_VLD     => uart_rx_din_vld,
@@ -213,13 +215,14 @@ begin
         -- UART RX & TX folks
         -- --------------------------------
         -- USER DATA INPUT INTERFACE
-        RX_DIN         => uart_rx_din,
-        RX_DIN_VLD     => uart_rx_din_vld,
-        RX_DIN_RDY     => uart_rx_din_rdy,
+        RX_DIN              => uart_rx_dout,
+        RX_DIN_VLD          => uart_rx_dout_vld,
+        RX_DIN_FRAME_ERROR  => uart_rx_frame_error,
+
         -- USER DATA OUTPUT INTERFACE
-        RX_DOUT        => uart_rx_dout,
-        RX_DOUT_VLD    => uart_rx_dout_vld,
-        RX_FRAME_ERROR => uart_rx_frame_error,
+        RX_DOUT             => uart_rx_din,
+        RX_DOUT_VLD         => uart_rx_din_vld,
+        RX_DOUT_RDY         => uart_rx_din_rdy,
         
         -- --------------------------------
         -- UART 

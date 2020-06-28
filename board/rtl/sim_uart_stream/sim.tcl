@@ -13,11 +13,8 @@ set TBENCH testbench.vhd
 
 set COMP_LIST [list \
     $PROJ_BASE/rtl_lib/vhdl-extras/rtl/extras/synchronizing.vhdl \
-    $PROJ_BASE/rtl_lib/vhdl-extras/rtl/extras/sizing.vhdl \
-    $PROJ_BASE/rtl_lib/vhdl-extras/rtl/extras/memory.vhdl \
-    $PROJ_BASE/rtl_lib/vhdl-extras/rtl/extras/fifos.vhdl \
+    $PROJ_BASE/rtl_lib/asfifo.vhd \
     $PROJ_BASE/rtl/uart_stream_sync_pkg.vhd \
-    $PROJ_BASE/rtl/handshake_rdy.vhd \
     $PROJ_BASE/rtl/uart_stream_sync.vhd \
 ]
 
@@ -39,5 +36,4 @@ vsim work.testbench
 
 # Setup and start simulation
 add wave sim:/testbench/uut/*
-add wave -group RX_HANDSHAKE_RDY sim:/testbench/uut/rx_handshake_rdy_i/*
 run 20 us

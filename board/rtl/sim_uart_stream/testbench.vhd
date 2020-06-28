@@ -44,7 +44,7 @@ architecture full of testbench is
 	-- Signals --------------------------------------------
 	signal rx_din 				: std_logic_vector(7 downto 0);
 	signal rx_din_vld			: std_logic;
-	signal rx_din_rdy           : std_logic;
+	signal rx_dout_rdy          : std_logic;
 	signal rx_dout         		: std_logic_vector(7 downto 0);
 	signal rx_dout_vld 			: std_logic;
 	signal rx_frame_error 		: std_logic;
@@ -121,14 +121,16 @@ begin
 		-- --------------------------------
 		-- UART RX & TX folks
 		-- --------------------------------
+
 		-- USER DATA INPUT INTERFACE
-		RX_DIN         => rx_din,
-		RX_DIN_VLD     => rx_din_vld,
-		RX_DIN_RDY	   => rx_din_rdy,
+		RX_DIN             	=> rx_din,
+		RX_DIN_VLD          => rx_din_vld,
+		RX_DIN_FRAME_ERROR  => rx_frame_error,
+
 		-- USER DATA OUTPUT INTERFACE
 		RX_DOUT        => rx_dout,
 		RX_DOUT_VLD    => rx_dout_vld,
-		RX_FRAME_ERROR => rx_frame_error,
+		RX_DOUT_RDY    => rx_dout_rdy,
 	
 		-- --------------------------------
 		-- UART 
@@ -186,6 +188,19 @@ begin
     -- Testbench 
 	-- ------------------------------------------------------------------------
 
+	-- Random destination ready signaling
+	random_rx_rdy : process
+		variable rand_wait : integer;
+	begin
+		-- Wait until the reset is disabled && then wait for a given time in inactive value
+		rx_dout_rdy 	<= '0';
+		wait until (rising_edge(CLK_RX) and RESET_RX = '0'); 
+		wait for get_random(TX_NEXT_RDY_IDLE_MIN, TX_NEXT_RDY_IDLE_MAX) * clk_rx_period;
+		
+		rx_dout_rdy 	<= '1';
+		wait for get_random(TX_NEXT_RDY_ON_MIN, TX_NEXT_RDY_ON_MAX) * clk_rx_period;
+	end process;
+
 	tb_rx : process
 		variable data_out 	: std_logic_vector(7 downto 0);
 		variable data_ref	: std_logic_vector(7 downto 0);
@@ -198,23 +213,25 @@ begin
 			-- Take data to write and setup the valid signal. After that, wait until data
 			-- are taken and wait for data which incomes
 			wait until rising_edge(CLK_RX);
-
+			
 			rx_din 		<= CMD_WRITE;
 			rx_din_vld	<= '1';
-			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			wait until rising_edge(CLK_RX);
 	
 			-- Send three parts of the address (from LSB bits to MSB bits)
 			for j in 0 to 2 loop
 				rx_din		<= data_in.addr((j+1)*8-1 downto j*8);
-				wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+				wait until rising_edge(CLK_RX);
 			end loop;
 	
 			rx_din		<= data_in.data;
-			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1'); 	    
+			wait until rising_edge(CLK_RX); 	    
 			rx_din_vld <= '0';
 	
 			-- Read the returned data 
-			wait until (rising_edge(CLK_RX) and rx_dout_vld = '1'); 
+			wait until (rx_dout_vld = '1' and rx_dout_rdy = '1'); 
+			wait until rising_edge(CLK_RX);
+
 			data_out := rx_dout;
 		end procedure;
 		
@@ -227,17 +244,19 @@ begin
 
 			rx_din 		<= CMD_READ;
 			rx_din_vld	<= '1';
-			wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+			wait until rising_edge(CLK_RX);
 	
 			-- Send three parts of the MSB address
 			for j in 0 to 2 loop
 				rx_din		<= addr((j+1)*8-1 downto j*8);
-				wait until (rising_edge(CLK_RX) and rx_din_vld = '1' and rx_din_rdy = '1');
+				wait until rising_edge(CLK_RX);
 			end loop;
 			rx_din_vld <= '0';
 	
 			-- Read the returned data 
-			wait until (rising_edge(CLK_RX) and rx_dout_vld = '1'); 
+			wait until (rx_dout_vld = '1' and rx_dout_rdy = '1'); 
+			wait until rising_edge(CLK_RX);
+
 			data_out := rx_dout;
 		end procedure;
 
@@ -245,6 +264,8 @@ begin
 		-- Initial values 
 		rx_din 				<= (others => '0');
 		rx_din_vld 			<= '0';
+		rx_frame_error		<= '0';
+		--rx_dout_rdy		 	<= '1';
 
 		-- Wait untill the process is being reseted
 		wait for RESET_RX_WAIT_AFTER * clk_rx_period;
@@ -301,7 +322,9 @@ begin
 		for i in 0 to test_data_rd'length-1 loop
 			rd_req :=  test_data_rd(i);
 			-- Wait until we have a valid data read request
-			wait until (rising_edge(CLK_TX) and tx_data_out_vld = '1');
+			wait until tx_data_out_vld = '1';
+			wait until rising_edge(CLK_TX);
+
 			-- Check if the address matches, setup the 
 			assert tx_addr_out = rd_req.addr report 
 				"tb_tx read (i = " & integer'image(i) & "): Expected address (" & to_string(rd_req.addr) &  ") doesn't match with received address (" & to_string(tx_addr_out) & ")."
@@ -314,17 +337,21 @@ begin
 			-- Wait untill the rising edge is detected and valid/ready signals are ready
 			tx_data_in 		<=  rd_req.data;
 			tx_data_in_vld 	<= '1';
-			wait until (rising_edge(CLK_TX) and tx_data_in_vld = '1' and tx_data_in_next = '1');
+			wait until tx_data_in_vld = '1' and tx_data_in_next = '1';
+			wait until rising_edge(CLK_TX);
 			tx_data_in_vld  <= '0';
 		end loop;
 		
 		assert false report "tb_tx : Read tests are done!" severity note;
-
+		wait until rising_edge(CLK_TX);
+		
 		-- 2) Write test
 		for i in 0 to test_data_wr'length-1 loop
 			-- We just need to check the write command is asserted 
 			wr_req := test_data_wr(i);
-			wait until (rising_edge(CLK_TX) and tx_data_out_vld = '1' and tx_data_out_next = '1');
+			wait until tx_data_out_vld = '1' and tx_data_out_next = '1';
+			wait until rising_edge(CLK_TX);
+
 			-- Check if the address matches, setup the 
 			assert tx_addr_out = wr_req.addr report 
 				"tb_tx write (i = " & integer'image(i) & "): Expected address (" & to_string(wr_req.addr) &  ") doesn't match with received address (" & to_string(tx_addr_out) & ")."

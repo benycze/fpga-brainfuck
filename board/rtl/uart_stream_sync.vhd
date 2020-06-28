@@ -25,14 +25,15 @@ entity uart_stream_sync is
     -- --------------------------------
     -- UART RX & TX folks
     -- --------------------------------
-    -- USER DATA INPUT INTERFACE
-    RX_DIN         : in  std_logic_vector(7 downto 0); -- input data to be transmitted over UART
-    RX_DIN_VLD     : in  std_logic; -- when DIN_VLD = 1, input data (DIN) are valid
-    RX_DIN_RDY     : out std_logic; -- when DIN_RDY = 1, transmitter is ready and valid input data will be accepted for transmiting
     -- USER DATA OUTPUT INTERFACE
-    RX_DOUT        : out std_logic_vector(7 downto 0); -- output data received via UART
-    RX_DOUT_VLD    : out std_logic; -- when DOUT_VLD = 1, output data (DOUT) are valid (is assert only for one clock cycle)
-    RX_FRAME_ERROR : out std_logic; -- when FRAME_ERROR = 1, stop bit was invalid (is assert only for one clock cycle)
+    RX_DOUT        : out  std_logic_vector(7 downto 0); -- input data to be transmitted over UART
+    RX_DOUT_VLD    : out std_logic; -- when DIN_VLD = 1, input data (DIN) are valid
+    RX_DOUT_RDY    : in std_logic; -- when DIN_RDY = 1, transmitter is ready and valid input data will be accepted for transmiting
+
+    -- USER DATA INPUT INTERFACE
+    RX_DIN              : in std_logic_vector(7 downto 0); -- output data received via UART
+    RX_DIN_VLD          : in std_logic; -- when DOUT_VLD = 1, output data (DOUT) are valid (is assert only for one clock cycle)
+    RX_DIN_FRAME_ERROR  : in std_logic; -- when FRAME_ERROR = 1, stop bit was invalid (is assert only for one clock cycle)
 
     -- --------------------------------
     -- UART 
@@ -57,7 +58,7 @@ architecture full of uart_stream_sync is
     -- Number of synchronization stages
   constant SYNC_STAGES        : natural := 4;
     -- Number of elements inside the FIFO
-  constant FIFO_RX_REQ_SIZE   : natural := 32;
+  constant FIFO_ADDDR_WIDTH   : natural := 5;
     -- Last iteration of address write
   constant CNT_ADDR_MAX       : integer := 2;
 
@@ -74,36 +75,14 @@ architecture full of uart_stream_sync is
   signal cnt_addr_rst   : std_logic;
 
   -- Signals ---------------------------
-    -- Signals for transition from RX --> FSM
-  signal data_din_in      : std_logic_vector(8 downto 0);
-  signal data_din_out     : std_ulogic_vector(8 downto 0);
-  signal data_din_sent    : std_logic;
-  signal data_din_sending : std_logic;
-  signal data_din_out_vld : std_logic;
+  signal data_din_fifo_in_vld : std_logic;
+  signal data_din_rx          : std_logic_vector(7 downto 0);
+  signal data_din_rx_vld      : std_logic;
+  signal data_din_rx_rd       : std_logic;
 
-  signal data_din_fifo_in           : std_ulogic_vector(8 downto 0);
-  signal data_din_fifo_in_vld       : std_ulogic;
-  signal data_din_fifo_out          : std_ulogic_vector(8 downto 0);
-  signal data_din_fifo_rd           : std_ulogic;
-  signal reg_data_din_fifo_empty    : std_logic;
-  signal data_din_fifo_empty        : std_logic;
-
-    -- Signals for transtion from FSM --> TX
-  signal data_dout_in           : std_logic_vector(8 downto 0);
-  signal data_dout_out          : std_ulogic_vector(8 downto 0);
-  signal data_dout_new_data     : std_logic;
-
-  -- Synchronized data in the DIN TX Clock domain
-    -- Input signals from the UART
-  signal data_din_rx      : std_logic_vector(7 downto 0);
-  signal data_din_rx_vld  : std_logic;
-
-    -- Output signals to UART
   signal data_dout_rx           : std_logic_vector(7 downto 0);
   signal data_dout_rx_vld       : std_logic; -- Output data valid
-  signal data_dout_rx_send      : std_logic; -- Output data send
-  signal data_dout_rx_sending   : std_logic; -- Output data are being sending 
-  signal data_dout_rx_frame_err : std_logic; -- Frame error indication 
+  signal data_dout_rx_full      : std_logic; -- Output FIFO is full
 
   -- VLD/NEXT signals controlled by the FSM
   signal tx_data_in_next_out    : std_logic;
@@ -111,134 +90,60 @@ architecture full of uart_stream_sync is
    
   -- FSM ------------------------------
   type FSM_State_t is 
-    (INIT, READ_ADDR, READ_WAIT, READ_NOT_TAKEN, WRITE_ADDR, WRITE_DATA, WRITE_WAIT, WRITE_ACK, WAIT_TRANS);
+    (INIT, READ_ADDR, READ_WAIT, READ_NOT_TAKEN, WRITE_ADDR, WRITE_DATA, WRITE_WAIT, WRITE_ACK);
 
   signal reg_state    : FSM_State_t; 
   signal next_state   : FSM_State_t;
 
 begin
+  
   -- --------------------------------------------------------------------------
   -- Transfer serial signals from the UART clock domain to FSM clock doimain
   -- --------------------------------------------------------------------------
-  -- Preparation of input data
-  data_din_in <= RX_DIN_VLD & RX_DIN;
+  -- Preparation of input data (all error frames are filtered out)
+  data_din_fifo_in_vld  <= (RX_DIN_VLD and not(RX_DIN_FRAME_ERROR));
 
-    -- RX ---> FSM
-  rx_din_sync_i : entity work.handshake_synchronizer
+  -- RX ---> TX (FSM)
+  rx_asfifo_i : entity work.ASFIFO
     generic map (
-      STAGES                => SYNC_STAGES,
-      RESET_ACTIVE_LEVEL    => '1'
+        DATA_WIDTH    => 8,
+        ADDR_WIDTH    => FIFO_ADDDR_WIDTH
     )
     port map(
-      --# {{clocks|}}
-      Clock_tx  => RX_CLK,
-      Reset_tx  => RX_RESET,
-
-      Clock_rx  => TX_CLK,
-      Reset_rx  => TX_RESET,
-
-      --# {{data|Send port}}
-      Tx_data     => std_ulogic_vector(data_din_in),
-      Send_data   => RX_DIN_VLD,
-      Sending     => data_din_sending,
-      Data_sent   => data_din_sent,
-
-      --# {{Receive port}}
-      Rx_data   => data_din_fifo_in,
-      New_data  => data_din_fifo_in_vld
+        -- FIFO WRITE INTERFACE
+        WR_CLK      => RX_CLK,
+        WR_RST      => RX_RESET,
+        WR_DATA     => RX_DIN,
+        WR_REQ      => data_din_fifo_in_vld,
+        WR_FULL     => open,
+        -- FIFO READ INTERFACE
+        RD_CLK      => TX_CLK,
+        RD_RST      => TX_RESET,
+        RD_DATA     => data_din_rx,
+        RD_DATA_VLD => data_din_rx_vld,
+        RD_REQ      => data_din_rx_rd
     );
 
-  -- Synchronization between data and handshake unit
-  rx_handshake_rdy_i: entity work.handshake_rdy
-    port map(
-      -- --------------------------------
-      -- Clocks & Reset
-      -- --------------------------------
-      CLK      => RX_CLK,
-      RESET    => RX_RESET,
-  
-      -- --------------------------------
-      -- Input & output
-      -- --------------------------------
-      DATA_SENT       => data_din_sent,
-      DATA_SENDING    => data_din_sending,
-      VLD             => RX_DIN_VLD,
-  
-      DATA_RDY        => RX_DIN_RDY
-    ) ;
-
-    rx_req_fifo_i : entity work.simple_fifo
+  -- TX (FSM) ---> RX
+  tx_asfifo_i : entity work.ASFIFO
     generic map(
-      RESET_ACTIVE_LEVEL  => '1',
-      MEM_SIZE            => FIFO_RX_REQ_SIZE,
-      SYNC_READ           => true
-      )
-    port map(
-      Clock     => TX_CLK,
-      Reset     => TX_RESET,
-
-      We        => data_din_fifo_in_vld,
-      Wr_data   => data_din_fifo_in,
-  
-      Re        => data_din_fifo_rd,
-      Rd_data   => data_din_out,
-  
-      Empty     => data_din_fifo_empty,
-      Full      => open,
-  
-      Almost_empty_thresh   => 1,
-      Almost_full_thresh    => 1,
-      Almost_empty          => open,
-      Almost_full           => open
-      );
-
-  -- Unpack data - data are ready if we have someting in FIFO, but data 
-  -- are available one clock later.
-  data_din_rx     <= std_logic_vector(data_din_out(7 downto 0));
-  data_din_rx_vld <= std_logic(data_din_out(8)) and not(reg_data_din_fifo_empty);
-
-  fifo_dout_vld_genp : process( TX_CLK )
-  begin
-    if(rising_edge(TX_CLK))then
-      if(TX_RESET = '1')then
-        reg_data_din_fifo_empty <= '1';
-      else
-        reg_data_din_fifo_empty <= data_din_fifo_empty;
-      end if;
-    end if;
-  end process ; -- identifier
-
-
-  --> FSM --> TX
-  rx_dout_sync_i : entity work.handshake_synchronizer
-    generic map(
-      STAGES              => SYNC_STAGES,
-      RESET_ACTIVE_LEVEL  => '1'
+        DATA_WIDTH  => 8,
+        ADDR_WIDTH  => FIFO_ADDDR_WIDTH
     )
     port map(
-      --# {{clocks|}}
-      Clock_tx    => TX_CLK,
-      Reset_tx    => TX_RESET,
-
-      Clock_rx    => RX_CLK,
-      Reset_rx    => RX_RESET,
-
-      --# {{data|Send port}}
-      Tx_data     => std_ulogic_vector(data_dout_in),
-      Send_data   => data_dout_rx_vld,
-      Sending     => data_dout_rx_sending,
-      Data_sent   => data_dout_rx_send,
-
-      --# {{Receive port}}
-      Rx_data     => data_dout_out,
-      New_data    => data_dout_new_data
+        -- FIFO WRITE INTERFACE
+        WR_CLK      => TX_CLK,
+        WR_RST      => TX_RESET,
+        WR_DATA     => data_dout_rx,
+        WR_REQ      => data_dout_rx_vld,
+        WR_FULL     => data_dout_rx_full,
+        -- FIFO READ INTERFACE
+        RD_CLK      => RX_CLK,
+        RD_RST      => RX_RESET,
+        RD_DATA     => RX_DOUT,
+        RD_DATA_VLD => RX_DOUT_VLD,
+        RD_REQ      => RX_DOUT_RDY
     );
-    -- Input data mapping
-    data_dout_in    <= data_dout_rx_frame_err & data_dout_rx;
-    -- Mapping of transferred signals to outputs
-    RX_DOUT         <= std_logic_vector(data_dout_out(7 downto 0));
-    RX_DOUT_VLD     <= std_logic(data_dout_new_data);
-    RX_FRAME_ERROR  <= std_logic(data_dout_out(8));
 
   -- --------------------------------------------------------------------------
   -- Control FSM (TX_CLK)
@@ -312,8 +217,8 @@ begin
       when READ_WAIT => 
              -- We are waiting on data which comes through the APP --> UART interface
              if(TX_DATA_IN_VLD = '1' and tx_data_in_next_out = '1')then 
-                if(data_dout_rx_sending = '1')then
-                  next_state <= WAIT_TRANS;
+                if( data_dout_rx_full = '0')then
+                  next_state <= INIT;
                 end if;
              end if;
 
@@ -338,17 +243,10 @@ begin
             end if;
 
       when WRITE_ACK => 
-              -- We need to send the ACK to the software
-              if(data_dout_rx_sending = '1')then
-                next_state <= WAIT_TRANS;
-              end if;
-    
-      when WAIT_TRANS => 
-              -- We are waiting untill data are transferred to RX clock domain, but we don't need
-              -- to have the valid outputs high because the data is already in transfer
-              if(data_dout_rx_send = '1')then
-                next_state <= INIT;
-              end if;
+            -- We need to send the ACK to the software
+            if(data_dout_rx_full = '0')then
+              next_state <= INIT;
+            end if;
 
       when others => null;
     end case ;
@@ -360,55 +258,53 @@ begin
     -- Default values of all signals
     tx_data_in_next_out     <= '0';
     tx_data_out_vld_out     <= '0';
-    data_dout_rx_frame_err  <= '0';
     data_dout_rx            <= (others => '0');
     data_dout_rx_vld        <= '0';
     reg_data_en             <= '0';
     reg_addr_en             <= '0';
     write_en                <= '0';
-    data_din_fifo_rd        <= '1';
     cnt_addr_rst            <= '0';
     cnt_addr_en             <= '0';
+    data_din_rx_rd          <= '0';
 
     case( reg_state ) is
 
       when INIT => 
-        -- We can prepare the address counter for address storage
-        cnt_addr_rst <= '1';
-           
+          -- We can prepare the address counter for address storage
+          cnt_addr_rst      <= '1';
+          data_din_rx_rd    <= '1';
+        
       when READ_ADDR => 
-        -- We are waiting to 8 bit address which will come here ... therefore, we need
-        -- to enable address register to receive the data. We need to enable the counter to move to the 
-        -- next index.
-        if(data_din_rx_vld = '1')then
-          reg_addr_en <= '1';
-          cnt_addr_en <= '1';
-        end if;
+          -- We are waiting to 8 bit address which will come here ... therefore, we need
+          -- to enable address register to receive the data. We need to enable the counter to move to the 
+          -- next index.
+          if(data_din_rx_vld = '1')then
+            reg_addr_en       <= '1';
+            cnt_addr_en       <= '1';
+            data_din_rx_rd    <= '1';
+          end if;
 
       when READ_NOT_TAKEN => 
-        -- Read reaquest is ready to be processed here.
-        -- We are still waiting on the following unit if it takes the command. In such situation,
-        -- we are rady to accept data, send data and we have to copy the output.
-        data_dout_rx          <= TX_DATA_IN;
-        data_dout_rx_vld      <= TX_DATA_IN_VLD;
-        tx_data_out_vld_out   <= '1'; -- We are asserting the output
-        tx_data_in_next_out   <= '0'; -- We are redy to receive
-        data_din_fifo_rd      <= '0';
+          -- Read reaquest is ready to be processed here.
+          -- We are still waiting on the following unit if it takes the command. In such situation,
+          -- we are rady to accept data, send data and we have to copy the output.
+          data_dout_rx          <= TX_DATA_IN;
+          data_dout_rx_vld      <= TX_DATA_IN_VLD;
+          tx_data_out_vld_out   <= '1'; -- We are asserting the output (it is valid)
+          tx_data_in_next_out   <= '0'; -- We are redy to receive any data
 
       when READ_WAIT => 
-            -- We are waiting on data which comes through the APP --> UART interface
-            -- During the wait, we will assert that we are ready to accept data and we will 
-            -- set the VLD signal to UART
-            if(data_dout_rx_sending = '1')then
-              tx_data_in_next_out   <= '1'; -- We are ready to receive
-            end if;
+          -- We are waiting on data which comes through the APP --> UART interface
+          -- During the wait, we will assert that we are ready to accept data and we will 
+          -- set the VLD signal to UART. We are ready to accept any data iff the output FIFO is 
+          -- not full.
+          if(data_dout_rx_full = '0')then
+            tx_data_in_next_out   <= '1'; -- We are ready to receive
+          end if;
 
-            -- Copy signals from the component
-            data_dout_rx          <= TX_DATA_IN;
-            data_dout_rx_vld      <= TX_DATA_IN_VLD;
-            
-            -- We are not reading any data in this state
-            data_din_fifo_rd      <= '0';
+          -- Copy signals from the component
+          data_dout_rx          <= TX_DATA_IN;
+          data_dout_rx_vld      <= TX_DATA_IN_VLD;
 
       when WRITE_ADDR => 
           -- We are waiting to 8 bit address which will come here ... therefore, we need
@@ -416,8 +312,9 @@ begin
           -- next index.
           write_en <= '1';
           if(data_din_rx_vld = '1')then
-            reg_addr_en <= '1';
-            cnt_addr_en <= '1';
+            reg_addr_en     <= '1';
+            cnt_addr_en     <= '1';
+            data_din_rx_rd  <= '1';
           end if;
 
       when WRITE_DATA => 
@@ -425,7 +322,8 @@ begin
             -- address register
             write_en <= '1';
             if(data_din_rx_vld = '1')then
-              reg_data_en <= '1';
+              reg_data_en     <= '1';
+              data_din_rx_rd  <= '1';
             end if;
 
       when WRITE_WAIT =>
@@ -433,19 +331,14 @@ begin
             -- we need to send the ACK command to the software
             write_en              <= '1';
             tx_data_out_vld_out   <= '1';
-            data_din_fifo_rd      <= '0';
 
       when WRITE_ACK => 
             -- Now we need to send the write ACK command, the valid is active until the 
             -- sending signal is asserted. After that, we need to remove the valid signal
             data_dout_rx          <= CMD_ACK;
-            data_dout_rx_vld      <= '1';
-            data_din_fifo_rd      <= '0'; 
 
-      when WAIT_TRANS => 
-            -- FIFO is not read during the waiting for the transfer from one to another clock domain
-            if(data_dout_rx_send = '0')then
-              data_din_fifo_rd <= '0';
+            if(data_dout_rx_full = '0')then
+              data_dout_rx_vld      <= '1';
             end if;
 
       when others => null;
