@@ -1,0 +1,14 @@
+*.bi
+*.bo
+*.ba
+*.cxx
+*.h
+*.o
+*.so
+*.bexe
+*.v
+*.vexe
+*.vcd
+*~
+*.fsdb
+*.log
