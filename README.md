@@ -30,7 +30,7 @@ The address space is described [here](https://github.com/benycze/fpga-brainfuck/
 
 ## How to translate the code
 
-Details of the board project is [here](https://github.com/benycze/fpga-brainfuck/tree/master/board).
+Details of the FPGA part is [here](https://github.com/benycze/fpga-brainfuck/tree/master/board).
 
 The code translation consits of two main steps:
 
