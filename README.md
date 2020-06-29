@@ -25,6 +25,7 @@ The project contains following folders:
 
 * _board_  - HDL desing and Quartus project
 * _sw_ - Software for communication and synthesis and translation of Brainfuck program
+* _bsv_ - source code of the Brainfuck processor in Bluespec Language
 
 The address space is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw).
 
