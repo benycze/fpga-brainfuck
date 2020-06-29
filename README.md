@@ -30,7 +30,14 @@ The address space is described [here](https://github.com/benycze/fpga-brainfuck/
 
 ## How to translate the code
 
-TODO
+Details of the board project is [here](https://github.com/benycze/fpga-brainfuck/tree/master/board).
+
+The code translation consits of two main steps:
+
+1. **Translation of the BSV code** - code of the Brainfuck processor is written in the Bluespec Language. You can download and compile the [BSC](https://github.com/B-Lang-org/bsc) compiler or you can use my Docker image with all required tools. I think that the second way is better to recommend because you don't need play with dependencies in the case that you are using Windows or different distribution than Debian/Ubuntu. The docker image repository is [here](https://github.com/benycze/bsc-docker-container) (name the image localhost/bsc-compiler).
+Enter the _bsv_ folder and run the `make` command. This produce the RTL code of the Brainfuck processor.
+
+2. **Translation of the HDL code** - TODO
 
 ## How to translate and upload the code
 
