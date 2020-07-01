@@ -24,11 +24,11 @@ BCPU_SRC=src
 BSC_PATH = $(BCPU_SRC):+
 
 # Configuration fo temporal directories
-BSC_ARGS  = -bdir build  -simdir build -vdir build_verilog -vsearch build_verilog -info-dir build \
+BSC_ARGS  += -bdir build  -simdir build -vdir build_verilog -vsearch build_verilog -info-dir build \
 			-show-compiles -show-elab-progress -show-schedule -show-stats 
 
 # Name of the output executable file
-SIM_EXE_FILE = bcpu_tb.exe
+SIM_EXE_FILE ?= bcpu_tb.exe
 
 # Flags for the CPP compiler
 BSC_C_FLAGS += -Xl -v -Xc -O3 -Xc++ -O3
@@ -87,13 +87,22 @@ clean:
 .PHONY: help
 help:
 	@echo "This Makefile has following targets:"
-	@echo "* compile 		- compiles the Bluespec simulation model"
-	@echo "* vcompile 		- compiles the Verilog code"
-	@echo "* sim 			- generates the Bluespec simulation model (faster)"
-	@echo "* vsim 			- generates the Verilog simulation model (slower)"
-	@echo "* test			- runs the Bluespec simulator"
-	@echo "* vtest			- runs the Verilog simulation model"
-	@echo "* test_all		- runs both test (Bluespec and Verilog)"
-	@echo "* clean			- clean everything" 
-
+	@echo "* compile 	compiles the Bluespec simulation model"
+	@echo "* vcompile 	compiles the Verilog code"
+	@echo "* sim 		generates the Bluespec simulation model (faster)"
+	@echo "* vsim 		generates the Verilog simulation model (slower)"
+	@echo "* test		runs the Bluespec simulator"
+	@echo "* vtest		runs the Verilog simulation model"
+	@echo "* test_all	runs both test (Bluespec and Verilog)"
+	@echo "* clean		clean everything" 
+	@echo ""
+	@echo "The user can specify some additional parameters:"
+	@echo ""
+	@echo "* SIM_EXE_FILE 	name of the output file. The passed value overwrites the default one."
+	@echo "		(default: $(SIM_EXE_FILE))"
+	@echo ""
+	@echo "* BSC_ARGS 	passed arguments are appended to following already defined arguments:"
+	@echo "		$(BSC_ARGS)" 
+	@echo ""
+	@echo ""
 
