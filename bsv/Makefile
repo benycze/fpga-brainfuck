@@ -29,7 +29,7 @@ TMP_DIRS  = -bdir build  -simdir build  -info-dir build -show-compiles -show-ela
 # Name of the output executable file
 SIM_EXE_FILE = "bcpu_tb.exe"
 
-# Flags for the CPP compile r
+# Flags for the CPP compiler
 BSC_C_FLAGS += -Xl -v -Xc -O3 -Xc++ -O3
 
 # -------------------------------------------------------------------------------
@@ -50,7 +50,4 @@ compile: build
 .PHONY: simulator
 @echo "INFO: linking bsc-compiled objects into Bluesim executable"
 	bsc -sim -parallel-sim-link 4 $(TMP_DIRS) -e $(TOPMODULE) -o ./$(SIM_EXE_FILE) $(BSC_C_FLAGS) 
-	#$(REPO)/src_Testbench/Top/C_Imported_Functions.c
 
-#.PHONY: test
-#test: compile
