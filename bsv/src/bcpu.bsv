@@ -21,5 +21,4 @@ module mkBCpu(BCpu_IFC);
 
 endmodule : mkBCpu
 
-
 endpackage : bcpu

@@ -10,12 +10,17 @@ package Tb;
 
 import bcpu :: *;
 
+    (* synthesize *)
     module mkTb (Empty);
+
+        BCpu_IFC mcpu <- mkBCpu;
         
         rule hello_rule;
-            $display("Hello world!");
+            let res = mcpu.getValue();
+            $display("Hello world --> my number is ", res);
             $finish;
         endrule
 
     endmodule : mkTb 
+
 endpackage : Tb
