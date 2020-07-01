@@ -6,16 +6,20 @@
 //  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 // -------------------------------------------------------------------------------
 
-package Tb;
+package bcpu;
 
-import bcpu :: *;
+interface BCpu_IFC;
+    method ActionValue#(int) getValue();
+endinterface
 
-    module mkTb (Empty);
-        
-        rule hello_rule;
-            $display("Hello world!");
-            $finish;
-        endrule
+(* synthesize *)
+module mkBCpu(BCpu_IFC);
+    
+    method ActionValue#(int) getValue();
+        return 42;
+    endmethod
 
-    endmodule : mkTb 
-endpackage : Tb
+endmodule : mkBCpu
+
+
+endpackage : bcpu

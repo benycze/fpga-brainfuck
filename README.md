@@ -36,7 +36,8 @@ Details of the FPGA part is [here](https://github.com/benycze/fpga-brainfuck/tre
 The code translation consits of two main steps:
 
 1. **Translation of the BSV code** - code of the Brainfuck processor is written in the Bluespec Language. You can download and compile the [BSC](https://github.com/B-Lang-org/bsc) compiler or you can use my Docker image with all required tools. I think that the second way is better to recommend because you don't need play with dependencies in the case that you are using Windows or different distribution than Debian/Ubuntu. The docker image repository is [here](https://github.com/benycze/bsc-docker-container) (name the image localhost/bsc-compiler).
-Enter the _bsv_ folder and run the `make` command. This produce the RTL code of the Brainfuck processor.
+Enter the _bsv_ folder and run the `make` command. This produce the RTL code of the Brainfuck processor. You can also use the `start-container.sh` script situated
+in the `bsv` folder.
 
 2. **Translation of the HDL code** - TODO
 
