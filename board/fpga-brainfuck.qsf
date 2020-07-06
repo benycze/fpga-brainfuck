@@ -51,6 +51,7 @@ set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_parit
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_debouncer.vhd"
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_clk_div.vhd"
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/uart.vhd"
+set_global_assignment -name VHDL_FILE "rtl/blink.vhd"
 set_global_assignment -name VHDL_FILE "rtl_lib/asfifo.vhd"
 set_global_assignment -name VHDL_FILE "rtl/fpga-brainfuck.vhd"
 set_global_assignment -name VHDL_FILE rtl/uart_stream_sync_pkg.vhd

@@ -46,8 +46,12 @@ architecture full of fpga_top is
     constant PARITY_BIT    : string  := "none"; -- legal values: "none", "even", "odd", "mark", "space"
     constant USE_DEBOUNCER : boolean := True;   -- enable/disable debouncer
 
-    constant RESET_CNT_WIDTH    : integer := 7;
-    constant RESET_SYNC_STAGES  : integer := 4;
+    constant RESET_CNT_WIDTH        : integer := 7;
+    constant RESET_SYNC_STAGES      : integer := 4;
+
+    -- The width is 24 bits, bacause log2(12e6) is 23.52 and
+    -- therefore we need to have 24 bits to reach the maximal value in 1 second
+    constant BLINK_LED_CNT_WIDTH    : integer := 24;
     
     -- Signals ------------------------
 
@@ -76,6 +80,13 @@ architecture full of fpga_top is
     signal uart_rx_frame_error  : std_logic;
 
     signal design_ready         : std_logic;
+
+    -- Signals for UART RX/TX signalization
+    signal led_uart_rx_sig      : std_logic;
+    signal led_uart_rx_en       : std_logic;
+
+    signal led_uart_tx_sig      : std_logic;
+    signal led_uart_tx_en       : std_logic;
 
     -- --------------------------------
     -- Demo signals for registers 
@@ -192,6 +203,60 @@ begin
     design_ready <= not(reset_c0 or reset_ref);
 
     -- ------------------------------------------------------------------------
+    -- LED signalization
+    -- ------------------------------------------------------------------------
+
+    -- Generation of the UART RX activity LED signal
+    led_uart_rx_en <= uart_rx_din_vld and uart_rx_din_rdy;
+
+    led_uart_rx_i : entity work.blink
+    generic map (
+        CNT_WIDTH       => BLINK_LED_CNT_WIDTH
+    )
+    port map(
+        -- --------------------------------
+        -- Clocks & Reset 
+        ----------------------------------- 
+        CLK		        => clk_ref,
+        RESET           => reset_ref,
+    
+        -- --------------------------------
+        -- Input interface
+        -- --------------------------------
+        INDIC_EN        => led_uart_rx_en,
+    
+        -- --------------------------------
+        -- Output interface 
+        -- --------------------------------
+        LED_EN          => led_uart_rx_sig
+    );
+
+    -- Generation of the UART TX activity LED signal
+    led_uart_tx_en <= uart_rx_dout_vld;
+
+    led_uart_tx_i : entity work.blink
+    generic map(
+        CNT_WIDTH      => BLINK_LED_CNT_WIDTH
+    )
+    port map(
+        -- --------------------------------
+        -- Clocks & Reset 
+        ----------------------------------- 
+        CLK		        => clk_ref,
+        RESET           => reset_ref,
+    
+        -- --------------------------------
+        -- Input interface
+        -- --------------------------------
+        INDIC_EN        => led_uart_tx_en,
+    
+        -- --------------------------------
+        -- Output interface 
+        -- --------------------------------
+        LED_EN          => led_uart_tx_sig
+    );
+
+    -- ------------------------------------------------------------------------
     -- UART connection -- it is passed to the 12MHz clock domain
     -- ------------------------------------------------------------------------
 
@@ -304,8 +369,8 @@ begin
 
     -- Demo output LED connections
     LED_0   <= design_ready;
-    LED_1   <= '0';
-    LED_2   <= '0';
+    LED_1   <= led_uart_tx_sig;
+    LED_2   <= led_uart_rx_sig;
     LED_3   <= '0';
     LED_4   <= '0';
     LED_5   <= '0';
