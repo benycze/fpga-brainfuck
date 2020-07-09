@@ -5,14 +5,28 @@ The following folder contains the RTL description of the board desing.
 * _ip_ - generated IP cores used in the design
 * _rtl_lib_ - 3rd party RTL codes. The list of all library files is shown [here](https://github.com/benycze/fpga-brainfuck)
 * _rtl_ - this folder contains my HDL files
-* All constraints (which are not embedded in HDL file as ALTERA_ATTRIBUTE) are situated in `constraints.sdc` file. 
+* All constraints (which are not embedded in HDL file as ALTERA_ATTRIBUTE) are situated in `constraints.sdc` file.
 
 The design was created in Quartus 19.1.0. For the [CYC1000](https://shop.trenz-electronic.de/en/Products/Trenz-Electronic/CYC1000-Intel-Cyclone-10/) which is a good starting board for newcomers.
 
+## Preparation of the project
+
+The project preparation is done via the TCL script which generates and translates the project. We are supporting following targets:
+
+* `make project` - bilds the project
+* `make compile` - compiles the project
+* `make clean` - cleans the project folder
+
+Makefile also contains some configuration of the project - name and output folder file.  The configuration of the quartus project
+is situated in following files:
+
+* `fpga-brainfuck.tcl` - TCL file which creates the project
+* `project-settings.tcl` - TCL file wit source files and PIN placement
+
 ## Simulations
 
-Simulations of internal components are situated in the `rtl` folder. 
-Each simulation folder contains the TCL script which translates the design and 
+Simulations of internal components are situated in the `rtl` folder.
+Each simulation folder contains the TCL script which translates the design and
 start the simulation in Modelsim.
 You can run the simulation from the command line using the following command:
 
