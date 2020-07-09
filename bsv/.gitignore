@@ -13,3 +13,4 @@
 *.fsdb
 *.log
 build
+*.exe
