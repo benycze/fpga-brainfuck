@@ -83,6 +83,17 @@ clean:
 	rm -rf build_verilog
 	rm -rf *.so $(SIM_EXE_FILE)
 
+.PHONY: tarball
+tarball: DSTDIR=$@ 
+tarball: LIBDIR=$@/lib
+tarball: vcompile 
+	@echo "Removing and building the tarball again ..."
+	rm -rf $(DSTDIR)
+	mkdir -p $(LIBDIR)
+	@echo "Copy all verilog files ..."
+	cp build_verilog/*.v $(DSTDIR)
+	@echo "Copy the verilog library from the Bluespec ..."
+	cp /lib/Verilog/* $(LIBDIR)
 
 .PHONY: help
 help:
@@ -95,6 +106,7 @@ help:
 	@echo "* vtest		runs the Verilog simulation model"
 	@echo "* test_all	runs both test (Bluespec and Verilog)"
 	@echo "* clean		clean everything" 
+	@echo "* tarball    create a package for translation"
 	@echo ""
 	@echo "The user can specify some additional parameters:"
 	@echo ""
