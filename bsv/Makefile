@@ -27,6 +27,8 @@ BSC_PATH = $(BCPU_SRC):+
 BSC_ARGS  += -bdir build  -simdir build -vdir build_verilog -vsearch build_verilog -info-dir build \
 			-show-compiles -show-elab-progress -show-schedule -show-stats 
 
+VERILOG_PATH = /lib/Verilog
+
 # Name of the output executable file
 SIM_EXE_FILE ?= bcpu_tb.exe
 
@@ -52,7 +54,7 @@ compile: build
 
 vcompile: build build_verilog
 	@echo "Compiling the Verilog design ..."
-	bsc -u -elab -verilog  $(BSC_ARGS)  $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $(TOPFILE)
+	bsc -u -elab -verilog  $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $(TOPFILE)
 
 .PHONY: simulator
 sim: compile
@@ -66,7 +68,7 @@ test: sim
 
 .PHONY: vsim
 vsim: vcompile
-	bsc -verilog $(BSC_ARGS) -e $(TOPMODULE) -o ./$(SIM_EXE_FILE)
+	bsc -verilog $(BSC_ARGS) -vsearch $(VERILOG_PATH)  -e $(TOPMODULE) -o ./$(SIM_EXE_FILE)
 
 .PHONY: vtest
 vtest: vsim
