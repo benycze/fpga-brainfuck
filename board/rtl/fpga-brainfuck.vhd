@@ -89,23 +89,47 @@ architecture full of fpga_top is
     signal led_uart_tx_en       : std_logic;
 
     -- --------------------------------
-    -- Demo signals for registers 
+    -- BCPU component & connection
     -- --------------------------------
-    constant REG_ADDR_WIDTH     : integer := 8;
-    constant REG_ARR_SIZE       : integer := 2**REG_ADDR_WIDTH;
+    -- This part has to changed iff the bluespec interface is 
+    -- also changed.
+    component mkBCpu is
+      port (
+        RDY_read        : out std_logic;
+        getData         : out std_logic_vector(7 downto 0);
+        RDY_getData     : out std_logic;
+        RDY_write       : out std_logic;
+        getReadRunning  : out std_logic;
+        getCpuEnabled   : out std_logic;
+        CLK             : in std_logic;
+        RST_N           : in std_logic;
+        read_addr       : in std_logic_vector(19 downto 0);
+        write_addr      : in std_logic_vector(19 downto 0);
+        write_data      : in std_logic_vector(7 downto 0);
+        EN_read         : in std_logic;
+        EN_write        : in std_logic;
+        EN_getData      : in std_logic
+      ) ;
+    end component;
 
-    signal reg_arr_addr      : std_logic_vector(23 downto 0);
-    signal reg_arr_data      : std_logic_vector(7 downto 0);
-    signal reg_arr_vld       : std_logic;
-    signal reg_arr_write     : std_logic;
+    signal led_readRunning  : std_logic;
+    signal led_cpuEnabled   : std_logic;
+    signal bcpu_rst_n       : std_logic;
 
-    signal reg_arr_rd        : std_logic;
-    signal reg_arr_rd_addr   : std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-    signal reg_arr_rd_next   : std_logic;
-    signal reg_arr_rd_data   : std_logic_vector(7 downto 0);
+    signal bcpu_addr_out        : std_logic_vector(23 downto 0);
+    signal bcpu_data_out        : std_logic_vector(7 downto 0);
+    signal bcpu_data_out_vld    : std_logic;
+    signal bcpu_data_out_next   : std_logic;
+    signal bcpu_data_out_write  : std_logic;
+    signal bcpu_data_in         : std_logic_vector(7 downto 0);
+    signal bcpu_data_in_vld     : std_logic;
+    signal bcpu_data_in_next    : std_logic;
 
-    type reg_array_t is array (0 to REG_ARR_SIZE-1) of std_logic_vector(7 downto 0);
-    signal reg_arr : reg_array_t;
+    signal bcpu_read_en         : std_logic;
+    signal bcpu_write_en        : std_logic;
+
+    signal bcpu_rdy_read_out    : std_logic;
+    signal bcpu_rdy_write_out   : std_logic;
 
 begin
 
@@ -312,56 +336,56 @@ begin
         -- UART 
         -- --------------------------------
         -- UART --> APP
-        TX_ADDR_OUT       => reg_arr_addr,
-        TX_DATA_OUT       => reg_arr_data,
-        TX_DATA_OUT_VLD   => reg_arr_vld,
-        TX_DATA_OUT_NEXT  => '1',
-        TX_DATA_WRITE     => reg_arr_write,
+        TX_ADDR_OUT       => bcpu_addr_out,
+        TX_DATA_OUT       => bcpu_data_out,
+        TX_DATA_OUT_VLD   => bcpu_data_out_vld,
+        TX_DATA_OUT_NEXT  => bcpu_data_out_next,
+        TX_DATA_WRITE     => bcpu_data_out_write,
 
         -- APP --> UART
-        TX_DATA_IN        => reg_arr_rd_data,
-        TX_DATA_IN_VLD    => reg_arr_rd,
-        TX_DATA_IN_NEXT   => reg_arr_rd_next
+        TX_DATA_IN        => bcpu_data_in,
+        TX_DATA_IN_VLD    => bcpu_data_in_vld,
+        TX_DATA_IN_NEXT   => bcpu_data_in_next
         ) ;
 
     -- ------------------------------------------------------------------------
-    -- Demo application
+    -- Brainfuck CPU connection
     -- ------------------------------------------------------------------------
 
-    -- Generatio of write registers
-    wr_regp:for i in 0 to REG_ARR_SIZE-1 generate
-        signal sig_en : std_logic;
-    begin
+    bcpu_i: mkBCpu
+    port map(
+        RDY_read        => bcpu_rdy_read_out,
+        getData         => bcpu_data_in,
+        RDY_getData     => bcpu_data_in_next,
+        RDY_write       => bcpu_rdy_write_out,
+        getReadRunning  => led_readRunning,
+        getCpuEnabled   => led_cpuEnabled,
+        CLK             => clk_c0,
+        RST_N           => bcpu_rst_n,
+        read_addr       => bcpu_addr_out(19 downto 0),
+        write_addr      => bcpu_addr_out(19 downto 0),
+        write_data      => bcpu_data_out,
+        EN_read         => bcpu_read_en,
+        EN_write        => bcpu_write_en,
+        EN_getData      => bcpu_data_in_vld
+    ) ;
 
-    -- Generate the enable signal for given 
-    sig_en <= '1' when std_logic_vector(to_unsigned(i,REG_ADDR_WIDTH)) = reg_arr_addr(REG_ADDR_WIDTH-1 downto 0) 
-            else '0';
-
-    reg : process( clk_c0 )
+    -- Switch the right RDY signal based on the operation
+    rdy_switchp:process(all)
     begin
-        if(rising_edge(clk_c0))then
-            if(sig_en = '1' and reg_arr_write = '1' and reg_arr_vld = '1' )then
-                reg_arr(i) <= reg_arr_data;
-            end if;
+        -- By default, we are switching the READ ready
+        bcpu_data_out_next <= bcpu_rdy_read_out;
+        if(bcpu_write_en = '1')then
+            bcpu_data_out_next <= bcpu_rdy_write_out;
         end if;
-    end process ; -- reg
+    end process;
 
-    end generate;
+    -- Generation of read & write signals
+    bcpu_read_en    <= not(bcpu_data_out_write) and bcpu_data_out_vld;
+    bcpu_write_en   <= bcpu_data_out_write and bcpu_data_out_vld; 
 
-    -- Strobe read address
-    reg_rdp : process( clk_c0 )
-    begin
-        if(rising_edge(clk_c0))then
-            if((reg_arr_rd = '1' and reg_arr_rd_next = '1') or reset_c0 = '1')then
-                reg_arr_rd <= '0';
-            elsif(reg_arr_write = '0' and reg_arr_vld = '1' )then
-                reg_arr_rd      <= '1';
-                reg_arr_rd_addr <= reg_arr_addr(REG_ADDR_WIDTH-1 downto 0);
-            end if;
-        end if;        
-    end process ; -- reg_rdp
-
-    reg_arr_rd_data <= reg_arr(to_integer(unsigned(reg_arr_addr)));
+    -- Reset signal is inverted
+    bcpu_rst_n <= not(reset_c0);
 
     -- ------------------------------------------------------------------------
     -- Mapping of output signals
@@ -371,8 +395,8 @@ begin
     LED_0   <= design_ready;
     LED_1   <= led_uart_tx_sig;
     LED_2   <= led_uart_rx_sig;
-    LED_3   <= '0';
-    LED_4   <= '0';
+    LED_3   <= led_readRunning;
+    LED_4   <= led_cpuEnabled;
     LED_5   <= '0';
     LED_6   <= '0';
     LED_7   <= '0';

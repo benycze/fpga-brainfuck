@@ -45,6 +45,8 @@ The configuration of UART (baudrate,etc.) is described [here](https://github.com
 | LED0              | Reset done | PIN_M6 |
 | LED1              | UART RX activity | PIN_T4 |
 | LED2              | UART TX activity | PIN_T3 |
+| LED3              | BCPU Read Running | PIN_R3 |
+| LED4              | BCPU Enabled      | PIN_T2 |
 | UART_TXD          | UART TXD channel | PIN_T7 |
 | UART_RXD          | UART_RXD channel | PIN_R7 |
 | CLK               | Reference 20 MHz | PIN_M2 |
