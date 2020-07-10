@@ -81,11 +81,14 @@ test_all: test vtest
 clean:
 	rm -rf build
 	rm -rf build_verilog
+	rm -rf tarball
 	rm -rf *.so $(SIM_EXE_FILE)
 
 .PHONY: tarball
+# Blaclisted files are divided by , (comma)
 tarball: DSTDIR=$@ 
 tarball: LIBDIR=$@/lib
+tarball: BLACKLISTED_LIB_FILES=Bluespec.xcf main.v
 tarball: vcompile 
 	@echo "Removing and building the tarball again ..."
 	rm -rf $(DSTDIR)
@@ -94,6 +97,10 @@ tarball: vcompile
 	cp build_verilog/*.v $(DSTDIR)
 	@echo "Copy the verilog library from the Bluespec ..."
 	cp /lib/Verilog/* $(LIBDIR)
+	@echo "Cleaning blaclisted files"
+	for file in $(BLACKLISTED_LIB_FILES); do \
+		rm -f $(LIBDIR)/$$file; \
+	done
 
 .PHONY: help
 help:

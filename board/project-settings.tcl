@@ -7,6 +7,8 @@
 # -------------------------------------------------------------------------------
 
 # Source code #################################################################
+puts "Adding project files ..."
+
 set_global_assignment -name VHDL_FILE "rtl_lib/vhdl-extras/rtl/extras/synchronizing.vhdl"
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_tx.vhd"
 set_global_assignment -name VHDL_FILE "rtl_lib/uart-for-fpga/rtl/comp/uart_rx.vhd"
@@ -23,6 +25,7 @@ set_global_assignment -name QIP_FILE ip/pll/pll.qip
 set_global_assignment -name SDC_FILE constraints.sdc
 
 # Pins  #####################################################################
+puts "Adding PIN assignment configuration ..."
 set_location_assignment PIN_M2 -to CLK
 set_location_assignment PIN_N6 -to RESET_BTN_N
 set_location_assignment PIN_T7 -to UART_TXD
@@ -35,5 +38,3 @@ set_location_assignment PIN_T2 -to LED_4
 set_location_assignment PIN_R4 -to LED_5
 set_location_assignment PIN_N5 -to LED_6
 set_location_assignment PIN_N3 -to LED_7
-
-

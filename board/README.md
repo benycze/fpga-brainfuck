@@ -13,8 +13,8 @@ The design was created in Quartus 19.1.0. For the [CYC1000](https://shop.trenz-e
 
 The project preparation is done via the TCL script which generates and translates the project. We are supporting following targets:
 
-* `make project` - bilds the project
-* `make compile` - compiles the project
+* `make project` - creates the Quartus project
+* `make compile` - compiles the project (**DEFAULT RULE**)
 * `make clean` - cleans the project folder
 
 Makefile also contains some configuration of the project - name and output folder file.  The configuration of the quartus project
@@ -22,6 +22,7 @@ is situated in following files:
 
 * `fpga-brainfuck.tcl` - TCL file which creates the project
 * `project-settings.tcl` - TCL file wit source files and PIN placement
+* `bcpu-sources.tcl` - TCL file with Bluespec sources
 
 ## Simulations
 

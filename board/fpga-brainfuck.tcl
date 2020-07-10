@@ -54,8 +54,9 @@ if {$make_assignments} {
 	set_global_assignment -name PROJECT_OUTPUT_DIRECTORY  $output_folder
 	set_global_assignment -name TOP_LEVEL_ENTITY fpga_top
 	set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
-
+	# Source project files
 	source project-settings.tcl
+	source bcpu-sources.tcl
 
 	# Commit assignments
 	export_assignments
