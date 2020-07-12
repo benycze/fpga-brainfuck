@@ -10,7 +10,7 @@ You need to install the [PySerial](https://pyserial.readthedocs.io/en/latest/sho
 pip3 --user PySerial
 ```
 
-If you don't want to run the script as _root_, add yourself to the group which has access to serial line. On my system, Debian 10, the block device `/dev/ttyUSB0` has following 
+If you don't want to run the script as _root_, add yourself to the group which has access to serial line. On my system, Debian 10, the block device `/dev/ttyUSB0` has following
 righths:
 
 ```bash
@@ -102,7 +102,21 @@ destination address (the passed number is the address bit-width):
 
 ## Address space
 
-TODO
+Braninfuck CPU is using the 20-bit address space. Reading from _Instruction_ and _Cell_
+memory is allowed if the CPU is not enabled. Reading from the register address space
+is allowed anytime.
+
+|   Address space       |    Coment                         |
+|-----------------------|-----------------------------------|
+| 0x0 - 0x3FFFF         | Cell memory address space         |
+| 0x40000 - 0x7FFFF     | Instruction memory address space  |
+| 0x80000 - 0xBFFFF     | Register address space            |
+
+Register address space has following layout:
+
+| Address               |   Comment                         |
+|-----------------------|-----------------------------------|
+| 0x80000               | CPU enabled                       |
 
 ## Compilation of the Brainfuck code
 
