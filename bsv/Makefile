@@ -68,7 +68,7 @@ test: sim
 
 .PHONY: vsim
 vsim: vcompile
-	bsc -verilog $(BSC_ARGS) -vsearch $(VERILOG_PATH)  -e $(TOPMODULE) -o ./$(SIM_EXE_FILE)
+	bsc -verilog $(BSC_ARGS) -remove-dollar -vsearch $(VERILOG_PATH)  -e $(TOPMODULE) -o ./$(SIM_EXE_FILE)
 
 .PHONY: vtest
 vtest: vsim

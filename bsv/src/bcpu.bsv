@@ -8,10 +8,10 @@
 
 package bcpu;
 
-import bpkg :: *;
-import FIFO :: *;
-import bmem :: *;
-import BRAM :: *;
+import bpkg  :: *;
+import FIFO  :: *;
+import bmem  :: *;
+import BRAM  :: *;
 
 // Generic CPU interface -- the type addr specifies the
 // memory address widht and type data specifies the initial 
@@ -68,10 +68,12 @@ module mkBCpu(BCpu_IFC);
     instCfg.allowWriteResponseBypass = False;
     BMem_IFC#(BMemAddress, BData) instMem <- mkBMEM(instCfg);   
     
-        // Helping componets
-    FIFO#(BData)            retDataFifo     <- mkFIFO;
+        // Helping registers
     Reg#(Bool)              readRunning     <- mkReg(False);
-    Reg#(Maybe#(BData))     outRegData      <- mkReg(Invalid);      
+    Reg#(BData)             outRegData      <- mkReg(0);       
+    Reg#(Bool)              dataDrained     <- mkReg(False);
+    Reg#(Maybe#(BData))     regSpaceRet     <- mkReg(tagged Invalid);
+    FIFO#(BData)            readRetData     <- mkFIFO;
 
     // ------------------------------------------------------------------------
     // Rules 
@@ -81,28 +83,32 @@ module mkBCpu(BCpu_IFC);
         // or command register. Data in command register. BRAM memory is written 
         // into the FIFO, output register data are written to the special register
         // during the read and multiplexed to the output.
-    rule drain_data_from_cell_memory (!cmdEn && readRunning);
-        let ret_data <- cellMem.memGetReadResponse();    
-        retDataFifo.enq(ret_data);
+    rule drain_data_from_cell_memory (!cmdEn);
+        let ret_data <- cellMem.memGetReadResponse(); 
+        readRetData.enq(ret_data);
+        readRunning <= False;
+        $display("BCpu: draining data from cell memory.");
     endrule
 
-    rule drain_data_from_instruction_memory(!cmdEn && readRunning);
+    rule drain_data_from_instruction_memory(!cmdEn);
         let ret_data <- instMem.memGetReadResponse();
-        retDataFifo.enq(ret_data);
+        readRetData.enq(ret_data);
+        readRunning <= False;
+        $display("BCpu: draining data from instruction memory.");
     endrule
 
-    rule drain_ouput_reg(outRegData  matches tagged Valid .d);
-        retDataFifo.enq(d);
+    rule drain_reg (regSpaceRet matches tagged Valid .data);
+        readRetData.enq(data);
+        regSpaceRet <= tagged Invalid;
+        readRunning <= False;
+        $display("BCpu: draining data from the register space");
     endrule
 
     // ------------------------------------------------------------------------
     // Methods 
     // ------------------------------------------------------------------------
-    method Action read(BAddr addr) if(!readRunning);
+    method Action read(BAddr addr) if (!readRunning);
         // Initial value of output data variable and enable read running
-        BData ret_data = 'h0;
-        readRunning <= True;
-        
         // Top level address decoder - minimal address length is 20 bits
         //
         // 18 bits are used for the address and 20-19 are used for the selection between the
@@ -111,18 +117,25 @@ module mkBCpu(BCpu_IFC);
         let mem_addr_slice   = addr[valueOf(BAddrWidth)-3:0];
         let reg_addr_slice   = addr[3:0];
         case (space_addr_slice) 
-            cellSpace  : begin
+            //cellSpace  : begin
+            cellSpace : begin
                 $display("BCpu read: Reading the CELL memory.");
-                cellMem.memPutReadReq(mem_addr_slice);
+                if(!cmdEn)
+                    cellMem.memPutReadReq(mem_addr_slice);
+                else
+                    $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
            instSpace  : begin
                 $display("BCpu read: Reading the INSTRUCTION memory.");
-                cellMem.memPutReadReq(mem_addr_slice);
+                if(!cmdEn)
+                    cellMem.memPutReadReq(mem_addr_slice);
+                else
+                    $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
-           regSpace : begin
+            regSpace  : begin
                 $display("BCpu read: Reading INTERNAL REGISTERS.");
                 case(reg_addr_slice)
-                    'h0 : outRegData <= tagged Valid regCmd;                    
+                    'h0 : regSpaceRet <= tagged Valid regCmd;                    
                     default : $display("No read operation to internal registers is performed.");
                 endcase
             end
@@ -130,21 +143,20 @@ module mkBCpu(BCpu_IFC);
                 $display("BCpu read: Required address space wasn't found.");
             end
         endcase
+        readRunning <= True;
 
         $displayh("BCpu read: Read method fired on address 0x",addr);
     endmethod
 
     method ActionValue#(BData) getData();
-        readRunning <= False;
-        // Mark the read operation as finished, get the data
-        // and return them to the sender
-        let ret = retDataFifo.first;
-        retDataFifo.deq();
-        $displayh("BCpu read: Returned data --> 0x",ret);
-        return ret;
+        // Unlock the read part and after the data are read out
+        let data = readRetData.first;
+        readRetData.deq(); 
+        $displayh("BCpu read: Returned data --> 0x",data);
+        return data;
     endmethod
 
-    method Action write(BAddr addr, BData data) if (!readRunning);
+    method Action write(BAddr addr, BData data);
 
         // Top level address decoder - two top-level bits are used
         // for indexing of the address space
@@ -153,7 +165,7 @@ module mkBCpu(BCpu_IFC);
         let reg_addr_slice   = addr[3:0];
 
         case (space_addr_slice) 
-            cellSpace  : begin
+            cellSpace : begin
                 $display("BCpu write: Writing the CELL memory.");
                 cellMem.memPutWriteReq(mem_addr_slice,data);
             end
@@ -161,7 +173,7 @@ module mkBCpu(BCpu_IFC);
                 $display("BCpu write: Writing the INSTRUCTION memory.");
                 cellMem.memPutWriteReq(mem_addr_slice,data);
             end
-            regSpace : begin
+            regSpace  : begin
                 $display("BCpu write: Writing INTERNAL REGISTERS.");
                 case(reg_addr_slice)
                    'h0 : regCmd <= data;                    
