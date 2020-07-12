@@ -130,6 +130,7 @@ architecture full of fpga_top is
     signal bcpu_data_in         : std_logic_vector(7 downto 0);
     signal bcpu_data_in_vld     : std_logic;
     signal bcpu_data_in_next    : std_logic;
+    signal bcpu_data_in_next_masked : std_logic;
 
     signal bcpu_read_en         : std_logic;
     signal bcpu_write_en        : std_logic;
@@ -345,16 +346,16 @@ begin
         -- UART 
         -- --------------------------------
         -- UART --> APP
-        TX_ADDR_OUT       => bcpu_addr_out,             -- out
-        TX_DATA_OUT       => bcpu_data_out,             -- out
-        TX_DATA_OUT_VLD   => bcpu_data_out_vld,         -- out
-        TX_DATA_OUT_NEXT  => bcpu_data_out_next,        -- in
-        TX_DATA_WRITE     => bcpu_data_out_write,       -- out
+        TX_ADDR_OUT       => bcpu_addr_out,
+        TX_DATA_OUT       => bcpu_data_out,
+        TX_DATA_OUT_VLD   => bcpu_data_out_vld,
+        TX_DATA_OUT_NEXT  => bcpu_data_out_next,       
+        TX_DATA_WRITE     => bcpu_data_out_write,
 
         -- APP --> UART
-        TX_DATA_IN        => bcpu_data_in,              -- in
-        TX_DATA_IN_VLD    => bcpu_data_in_vld,          -- in
-        TX_DATA_IN_NEXT   => bcpu_data_in_next          -- out
+        TX_DATA_IN        => bcpu_data_in,
+        TX_DATA_IN_VLD    => bcpu_data_in_vld,
+        TX_DATA_IN_NEXT   => bcpu_data_in_next
         ) ;
 
     -- ------------------------------------------------------------------------
@@ -363,22 +364,22 @@ begin
 
     bcpu_i: mkBCpu
     port map(
-        RDY_read            => bcpu_rdy_read_out,       --out
-        getData             => bcpu_data_in,            --out
-        RDY_getData         => bcpu_data_in_vld,        --out
-        RDY_write           => bcpu_rdy_write_out,      --out
-        getReadRunning      => bcpu_readRunning,        --out
-        RDY_getReadRunning  => led_readRunning_en,      --out
-        getCpuEnabled       => bcpu_cpuEnabled,         --out
-        RDY_getCpuEnabled   => led_cpuEnabled_en,       --out
-        CLK             => clk_c0,
-        RST_N           => bcpu_rst_n,
-        read_addr       => bcpu_addr_out(19 downto 0), --in
-        write_addr      => bcpu_addr_out(19 downto 0), --in
-        write_data      => bcpu_data_out,              --in
-        EN_read         => bcpu_read_en,               --in
-        EN_write        => bcpu_write_en,              --in
-        EN_getData      => bcpu_data_in_next           --in
+        RDY_read            => bcpu_rdy_read_out,
+        getData             => bcpu_data_in, 
+        RDY_getData         => bcpu_data_in_vld,
+        RDY_write           => bcpu_rdy_write_out,
+        getReadRunning      => bcpu_readRunning,
+        RDY_getReadRunning  => led_readRunning_en,
+        getCpuEnabled       => bcpu_cpuEnabled,
+        RDY_getCpuEnabled   => led_cpuEnabled_en,
+        CLK                 => clk_c0,
+        RST_N               => bcpu_rst_n,
+        read_addr           => bcpu_addr_out(19 downto 0),
+        write_addr          => bcpu_addr_out(19 downto 0),
+        write_data          => bcpu_data_out,
+        EN_read             => bcpu_read_en,
+        EN_write            => bcpu_write_en,
+        EN_getData          => bcpu_data_in_next_masked
     ) ;
 
     -- Switch the right RDY signal based on the operation
@@ -401,6 +402,9 @@ begin
     -- LED indicator generation
     led_readRunning <= bcpu_readRunning and led_readRunning_en;
     led_cpuEnabled <= bcpu_cpuEnabled and led_cpuEnabled_en;
+
+    -- Masked signal for the output 
+    bcpu_data_in_next_masked <= bcpu_data_in_next and bcpu_data_in_vld;
 
     -- ------------------------------------------------------------------------
     -- Mapping of output signals
