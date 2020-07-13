@@ -21,7 +21,7 @@ interface BMem_IFC#(type typeAddr, type typeData);
     // The BSC compiler check this during the translation. No additional
     // code is given there to check the situation. Therefore, if you
     // want to work with the SW part, stop the processing of the HW first.
-
+    
     // SW interface ------------------------------------------
     // Used during the non-active mode (debugging, before the start of the 
     // program and so on). This part of the interface is optimized for
@@ -37,30 +37,56 @@ interface BMem_IFC#(type typeAddr, type typeData);
     // BMEM interface for the application ----------------------
     // Used during the normal operation (no latency), direct access
     interface BRAM2Port#(typeAddr, typeData) bram_ifc;
-    
+
+    // Debug interface -----------------------------------------
+    // Special helping debug methods which allows us to 
+    // get the last accessed data (read/write) via the memPut* methods.
+    // The user is able to get:
+    // * Last request data
+    // * Last used address (Read/Write)
+    // * Last operation (Read/Write)
+    // * Returned data from the BRAM (during the read)
+    method typeAddr getLastInReqAddr();
+    method typeData getLastReqData();
+    method typeData getReturnedData();
+
+    // Returns True iff we were requesting the write operation
+    // Returns False iff we were requesting the read operation
+    // WARNING: Default value is False!!!
+    method Bool getLastReqOperation();
+    // Number of performed Reads
+    method UInt#(10) getReadCount();
 endinterface
 
 module mkBMEM #(parameter BRAM_Configure cfg) (BMem_IFC#(typeAddr,typeData)) provisos(
     Bits#(typeAddr,n_typeAddr), Bits#(typeData,n_typeData), Literal#(typeData),
-    Eq#(typeAddr)
+    Eq#(typeAddr), Literal#(typeAddr)
 );
 
     // ----------------------------------------------------
     // Componetns & helping FIFO fronts
     // ----------------------------------------------------
-    BRAM2Port#(typeAddr,typeData) cellMemory <- mkBRAM2Server(cfg);
-    FIFOF#(BRAMRequest#(typeAddr, typeData)) readReqFifo  <- mkFIFOF;
-    FIFOF#(BRAMRequest#(typeAddr, typeData)) writeReqFifo <- mkFIFOF;
-    FIFO#(typeData)                          retDataFifo  <- mkFIFO;
-    Reg#(Bool) wr_rd_switch <- mkReg(False);
+    BRAM2Port#(typeAddr,typeData) cellMemory                <- mkBRAM2Server(cfg);
+    FIFOF#(BRAMRequest#(typeAddr, typeData)) readReqFifo    <- mkFIFOF;
+    FIFOF#(BRAMRequest#(typeAddr, typeData)) writeReqFifo   <- mkFIFOF;
+    FIFO#(typeData)                          retDataFifo    <- mkFIFO;
+    Reg#(Bool) wr_rd_switch                         <- mkReg(False);
+    Reg#(typeData) returnedBramData                 <- mkReg(0);
+    Reg#(BRAMRequest#(typeAddr, typeData)) lastReq  <- mkReg(BRAMRequest {write: False, 
+                                                                         responseOnWrite: False, 
+                                                                         address: 0, datain: 0} );
+
+    Reg#(UInt#(10)) cntReads                        <- mkReg(0);
 
     // ----------------------------------------------------
     // Rules and methods
     // ----------------------------------------------------
 
     rule rule_return_read_req;
-        let data <- cellMemory.portA.response.get();
+        let data <- cellMemory.portA.response.get;
+        returnedBramData <= data;
         retDataFifo.enq(data);
+        cntReads <= cntReads + 1;
     endrule
 
     rule rule_fire_bram_cell_both;
@@ -100,6 +126,7 @@ module mkBMEM #(parameter BRAM_Configure cfg) (BMem_IFC#(typeAddr,typeData)) pro
         let req = readReqFifo.first;
         cellMemory.portA.request.put(req);
         readReqFifo.deq();
+        lastReq <= req;
         $display("bmem: addresses are not same (read) --> ",req);
     endrule
 
@@ -108,6 +135,7 @@ module mkBMEM #(parameter BRAM_Configure cfg) (BMem_IFC#(typeAddr,typeData)) pro
         let req = writeReqFifo.first;
         cellMemory.portA.request.put(req);
         writeReqFifo.deq();
+        lastReq <= req;
         $display("bmem: addresses are not same (write) --> ",req);
     endrule
 
@@ -132,6 +160,26 @@ module mkBMEM #(parameter BRAM_Configure cfg) (BMem_IFC#(typeAddr,typeData)) pro
         retDataFifo.deq();
         $display("bmem: getReadResponse");
         return ret;
+    endmethod
+
+    method typeAddr getLastInReqAddr();
+        return lastReq.address;
+    endmethod 
+
+    method typeData getLastReqData();
+        return lastReq.datain;
+    endmethod
+
+    method typeData getReturnedData();
+        return returnedBramData;
+    endmethod
+
+    method Bool getLastReqOperation();
+        return lastReq.write;
+    endmethod
+
+    method UInt#(10) getReadCount();
+        return cntReads;
     endmethod
 
     // ----------------------------------------------------
