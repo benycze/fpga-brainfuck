@@ -11,6 +11,11 @@ PROJECT_NAME=fpga-brainfuck
 OUTPUT_FOLDER=output_files
 BCPU_PROJECT_PATH=../bsv
 
+
+# Quartus PGM configuration
+DEVICE ?= 1
+SOF ?= ./output_files/fpga-brainfuck.sof
+
 # Targets -----------------------------------------------------------------------
 
 # Scan the folder for the content
@@ -18,12 +23,21 @@ BCPU_DIRS = $(shell find $(BCPU_PROJECT_PATH) -type d)
 BCPU_FILES = $(shell find $(BCPU_PROJECT_PATH) -type f -name '*')
 
 # Targets which are not creating any files
-.PHONY: compile project clean
+.PHONY: compile project clean run
 
 compile: project
 	quartus_sh --flow compile $(PROJECT_NAME)
 
 project: $(PROJECT_NAME).qpf
+
+run: compile
+	@echo "Programming the device with generated SOF file ..."
+	quartus_pgm --mode=jtag --device=$(DEVICE) --operation="p;$(SOF)"
+	@echo 
+	@echo "***********************************************"
+	@echo "Done ..."
+	@echo "***********************************************"
+
 
 bcpu-sources.tcl: $(BCPU_PROJECT_PATH) $(BCPU_DIRS) $(BCPU_FILES)
 	@echo "Translating the Bluespec code of the BCPU"

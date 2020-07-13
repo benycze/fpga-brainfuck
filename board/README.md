@@ -16,6 +16,7 @@ The project preparation is done via the TCL script which generates and translate
 * `make project` - creates the Quartus project
 * `make compile` - compiles the project (**DEFAULT RULE**)
 * `make clean` - cleans the project folder
+* `make run` - compile and program the device. The device id is passed in the _DEVICE_ variable and .sof file in _SOF_ parameter. Default values are _DEVICE_=1 and _SOF_=./output-files/brainfuck.sof
 
 Makefile also contains some configuration of the project - name and output folder file.  The configuration of the quartus project
 is situated in following files:
