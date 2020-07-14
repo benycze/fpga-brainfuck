@@ -102,21 +102,21 @@ destination address (the passed number is the address bit-width):
 
 ## Address space
 
-Braninfuck CPU is using the 20-bit address space. Reading from _Instruction_ and _Cell_
+Braninfuck CPU is using the 12-bit address space. Reading from _Instruction_ and _Cell_
 memory is allowed if the CPU is not enabled. Reading from the register address space
 is allowed anytime.
 
 |   Address space       |    Coment                         |
 |-----------------------|-----------------------------------|
-| 0x0 - 0x3FFFF         | Cell memory address space         |
-| 0x40000 - 0x7FFFF     | Instruction memory address space  |
-| 0x80000 - 0xBFFFF     | Register address space            |
+| 0x0 - 0x3FF           | Cell memory address space         |
+| 0x400 - 0x7FF         | Instruction memory address space  |
+| 0x800 - 0xBFF         | Register address space            |
 
 Register address space has following layout:
 
 | Address               |   Comment                         |
 |-----------------------|-----------------------------------|
-| 0x80000               | CPU enabled                       |
+| 0x800                 | CPU enabled                       |
 
 ## Compilation of the Brainfuck code
 

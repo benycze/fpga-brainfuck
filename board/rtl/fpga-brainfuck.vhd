@@ -105,8 +105,8 @@ architecture full of fpga_top is
         RDY_getCpuEnabled   : out std_logic;
         CLK                 : in std_logic;
         RST_N               : in std_logic;
-        read_addr           : in std_logic_vector(19 downto 0);
-        write_addr          : in std_logic_vector(19 downto 0);
+        read_addr           : in std_logic_vector(11 downto 0);
+        write_addr          : in std_logic_vector(11 downto 0);
         write_data          : in std_logic_vector(7 downto 0);
         EN_read             : in std_logic;
         EN_write            : in std_logic;
@@ -374,8 +374,8 @@ begin
         RDY_getCpuEnabled   => led_cpuEnabled_en,
         CLK                 => clk_c0,
         RST_N               => bcpu_rst_n,
-        read_addr           => bcpu_addr_out(19 downto 0),
-        write_addr          => bcpu_addr_out(19 downto 0),
+        read_addr           => bcpu_addr_out(11 downto 0),
+        write_addr          => bcpu_addr_out(11 downto 0),
         write_data          => bcpu_data_out,
         EN_read             => bcpu_read_en,
         EN_write            => bcpu_write_en,

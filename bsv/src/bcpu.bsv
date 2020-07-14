@@ -83,18 +83,18 @@ module mkBCpu(BCpu_IFC);
         // or command register. Data in command register. BRAM memory is written 
         // into the FIFO, output register data are written to the special register
         // during the read and multiplexed to the output.
-    rule drain_data_from_cell_memory (!cmdEn);
-        let ret_data <- cellMem.memGetReadResponse(); 
+    rule drain_data_from_cell_memory_app (!cmdEn);
+        let ret_data <- cellMem.memGetReadResponseA(); 
         readRetData.enq(ret_data);
         readRunning <= False;
-        $display("BCpu: draining data from cell memory.");
+        $display("BCpu: draining data from cell memory (during non-operational mode).");
     endrule
 
-    rule drain_data_from_instruction_memory(!cmdEn);
-        let ret_data <- instMem.memGetReadResponse();
+    rule drain_data_from_instruction_memory_app(!cmdEn);
+        let ret_data <- instMem.memGetReadResponseA();
         readRetData.enq(ret_data);
         readRunning <= False;
-        $display("BCpu: draining data from instruction memory.");
+        $display("BCpu: draining data from instruction memory (during non-operational mode).");
     endrule
 
     rule drain_reg (regSpaceRet matches tagged Valid .data);
@@ -121,14 +121,14 @@ module mkBCpu(BCpu_IFC);
             cellSpace : begin
                 $display("BCpu read: Reading the CELL memory.");
                 if(!cmdEn)
-                    cellMem.memPutReadReq(mem_addr_slice);
+                    cellMem.memPutReadReqA(mem_addr_slice);
                 else
                     $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
            instSpace  : begin
                 $display("BCpu read: Reading the INSTRUCTION memory.");
                 if(!cmdEn)
-                    cellMem.memPutReadReq(mem_addr_slice);
+                    instMem.memPutReadReqA(mem_addr_slice);
                 else
                     $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
@@ -167,11 +167,17 @@ module mkBCpu(BCpu_IFC);
         case (space_addr_slice) 
             cellSpace : begin
                 $display("BCpu write: Writing the CELL memory.");
-                cellMem.memPutWriteReq(mem_addr_slice,data);
+                if(!cmdEn)
+                    cellMem.memPutWriteReqA(mem_addr_slice,data);
+                else
+                    $display("BCpu write: It is not allowed to work with memory during the operational mode.");
             end
            instSpace  : begin
                 $display("BCpu write: Writing the INSTRUCTION memory.");
-                cellMem.memPutWriteReq(mem_addr_slice,data);
+                if(!cmdEn)
+                    instMem.memPutWriteReqA(mem_addr_slice,data);
+                else
+                    $display("BCpu write: It is not allowed to work with memory during the operational mode."); 
             end
             regSpace  : begin
                 $display("BCpu write: Writing INTERNAL REGISTERS.");

@@ -99,7 +99,7 @@ tarball: vcompile
 	cp build_verilog/*.v $(DSTDIR)
 	@echo "Copy the verilog library from the Bluespec ..."
 	cp /lib/Verilog/* $(LIBDIR)
-	cp -f /lib/Verilog.Quartus/* $(LIBDIR)
+	cp -f ./patched_libs/* $(LIBDIR)
 	@echo "Cleaning blaclisted files"
 	for file in $(BLACKLISTED_LIB_FILES); do \
 		rm -f $(LIBDIR)/$$file; \

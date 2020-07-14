@@ -6,9 +6,10 @@
 *.o
 *.so
 *.bexe
-*.v
 *.vexe
 *.vcd
+build_verilog/*.v
+tarball/
 *~
 *.fsdb
 *.log
