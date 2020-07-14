@@ -47,9 +47,13 @@ def get_parser(args):
     'You are also allowed to send more bytes at once where the passed address will be used for the first byte (from LSB) and following bytes '
     'will be written on incremented address.'.format(prgname),formatter_class=argparse.RawTextHelpFormatter)
 
+    # Remember the conversion function if you want to write integers as 0x or just like a literal
+    int_conv = lambda x: int(x,0)
     parser.add_argument('--device',type=str,nargs=1,help='Specify the path to the device.',default='/dev/ttyUSB0')
     parser.add_argument('--test',type=int,nargs=1,help='Run the infinite r/w test until the CTRL+C is fired. The passed argument is the address space bit width.')
-    parser.add_argument('command',type=lambda x: int(x,0),nargs='*',help='There are two possible commands - read and write.'
+    parser.add_argument("--max-test-addr",type=int_conv,nargs=1,help='Set the maximal tested address of passed address space. Default one is the maximal value.')
+    parser.add_argument("--min-test-addr",type=int_conv,nargs=1,help='Set the minimal tested address of passed address space. Default one is the minimal value.')
+    parser.add_argument('command',type=int_conv,nargs='*',help='There are two possible commands - read and write.'
     'Read is invoked iff only address is passed. Write is invoked iff we pass additonal value argument.')
 
     return parser.parse_args(args)
@@ -84,28 +88,49 @@ def print_byte(data):
     conv_data = hex(int.from_bytes(data,byteorder='little'))
     print(conv_data)
 
-def start_test(dev,awidth):
+def start_test(dev,awidth,min_value,max_value):
     """
     Start the test of address space
 
     Parameters:
         - dev - device to work with
         - awidth - address space width which will be tested
+        - min_value - minimal address value from the argument
+        - max_value - maximal ddress value from the argument
     """
-    print("Test mode has been detected. The rest of the command is ignored.\n")
-    print(" * Tested address space => {}".format(awidth))
-    print(" * Test prints the '+' characted after every {} operations.".format(TEST_DOT_CNT))
-    print(" * Test prints the '#' after we process the whole address space.")
-    print(" * USE CTRL + C to stop the testing process.\n\n")
+    def __value_check(func,curr_value,new_value,errmessage):
+        if (new_value is None):
+            return curr_value
 
+        if func(new_value):
+            return new_value
+        else:
+            raise ValueError(errmessage)
+
+    # Setup test parameters and print some debug info
     signal.signal(signal.SIGINT, interupt_signal_handler)
     tmp_addr    = 0x0
     tmp_data    = []
     succ_test   = 0
     succ_addrs  = 0
     start_time  = int(time.time())
-    max_addr    = (2**awidth)-1
+    max_addr    = __value_check(lambda x: x > 0, (2**awidth)-1, max_value, "Maximal value cannot be a negative number!")
+    min_addr    = __value_check(lambda x: x > 0, 0, min_value, "Minimal value cannot be a negative value!")
 
+    # Check minimal and maximal values
+    if min_addr > max_addr:
+        raise ValueError("Minimal value is bigger than maximal value!")
+
+    print("Test mode has been detected. The rest of the command is ignored.\n")
+    print(" * Tested address space => {}".format(awidth))
+    print(" * Minimal address value => {}".format(hex(min_addr)))
+    print(" * Maximal address value => {}".format(hex(max_addr)))
+    print(" * Test prints the '+' characted after every {} operations.".format(TEST_DOT_CNT))
+    print(" * Test prints the '#' after we process the whole address space.")
+    print(" * USE CTRL + C to stop the testing process.\n\n")
+
+    # Setup the starting address
+    tmp_addr = min_addr
     while TEST_EN:
         # Generate random data
         rnd_input = random.randint(0,255)
@@ -180,7 +205,9 @@ def process(args,dev):
     """
     # The test command has biggere precende
     if(args.test is not None):
-        start_test(dev,args.test[0])
+        min_value = args.min_test_addr[0] if not(args.min_test_addr is None) else None
+        max_value = args.max_test_addr[0] if not(args.max_test_addr is None) else None
+        start_test(dev,args.test[0],min_value,max_value)
     elif(len(args.command) == 1):
         # Read command asserted
         addr = args.command[0]

@@ -100,6 +100,12 @@ destination address (the passed number is the address bit-width):
 ./bbus.py --test=8
 ```
 
+You can also handle the tested address space using the `--min-test-addr` and `--max-test-addr` arguments:
+
+```bash
+./bbus.py --test=8 --min-test-addr=0x5 --max-test-addr=0x100
+```
+
 ## Address space
 
 Braninfuck CPU is using the 12-bit address space. Reading from _Instruction_ and _Cell_
