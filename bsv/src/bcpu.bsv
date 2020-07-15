@@ -144,7 +144,7 @@ module mkBCpu(BCpu_IFC);
     endrule
 
     // Configure enable/disable signals to the BCore
-    (* descending_urgency = "put_bcore_config, write" *)
+    (* descending_urgency = "write,put_bcore_config" *)
     rule put_bcore_config; 
         // Take the value of the register (we will modify it)
         let tmpCmdReg = regCmd;
