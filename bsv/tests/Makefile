@@ -28,7 +28,7 @@ default: test_all vtest_all
 #    vsim_TbFoo and sim_TbFoo
 # 3] Add the new tests to the test_all and vtest_all targets
 # 
-# That is all folks! The rest of the translation is handler by the general csim_% and cvsim_% 
+# That is all folks! The rest of the translation is handled by the general csim_% and cvsim_% 
 # targets.
 
 .PHONY: sim_tbAddr vsim_TbAddr
