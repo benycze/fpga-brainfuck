@@ -52,6 +52,7 @@ clean:
 	rm -rf build
 	rm -rf build_verilog
 	rm -rf tarball
+	$(MAKE) -C tests clean
 
 .PHONY: tarball
 # Blaclisted files are divided by , (comma)
