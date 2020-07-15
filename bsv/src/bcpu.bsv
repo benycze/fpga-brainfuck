@@ -54,9 +54,13 @@ module mkBCpu(BCpu_IFC);
 
     // Registers ------------------------------------------
         // Command register (8 bits)
-    Reg#(Bit#(8))       regCmd <- mkReg(0);
+    Reg#(Bit#(8))   regCmd      <- mkReg(0);
+        // Work register for the PC
+    Reg#(BData)     regWorkPcLsb <- mkReg(0);
+
         // Parse the command register
-    Bool cmdEn =  unpack(regCmd[0]);
+    Bool cmdEn  =  unpack(regCmd[bitEnabled]);
+    Bool stepEn =  unpack(regCmd[bitStepEnabled]);
 
     // Memory blocks --------------------------------------
         // Cell memory
@@ -139,10 +143,23 @@ module mkBCpu(BCpu_IFC);
         $display("BCpu: draining data from the register space");
     endrule
 
-        // Configure enable/disable signals to the BCore
-    (* fire_when_enabled, no_implicit_conditions *)
-    rule put_bcore_config;
-        bCore.setEnabled(cmdEn);
+    // Configure enable/disable signals to the BCore
+    (* descending_urgency = "put_bcore_config, write" *)
+    rule put_bcore_config; 
+        // Take the value of the register (we will modify it)
+        let tmpCmdReg = regCmd;
+
+        // Enable the CPU
+        if(stepEn || cmdEn) begin
+            // Enable the CPU, switch the step off
+            bCore.setEnabled(True);
+        end 
+
+        // Switch the stop off, if it was enabled (and with logical 0)
+        tmpCmdReg[bitStepEnabled] = tmpCmdReg[bitStepEnabled] & 0;
+
+        // Write new command register
+        regCmd <= tmpCmdReg;
     endrule
 
     // ------------------------------------------------------------------------
@@ -156,7 +173,7 @@ module mkBCpu(BCpu_IFC);
         // data memory, program memory and internal registers
         let space_addr_slice = addr[valueOf(BAddrWidth)-1:valueOf(BAddrWidth)-2];
         let mem_addr_slice   = addr[valueOf(BAddrWidth)-3:0];
-        let reg_addr_slice   = addr[3:0];
+        let reg_addr_slice   = addr[4:0];
         case (space_addr_slice) 
             //cellSpace  : begin
             cellSpace : begin
@@ -175,8 +192,11 @@ module mkBCpu(BCpu_IFC);
             end
             regSpace  : begin
                 $display("BCpu read: Reading INTERNAL REGISTERS.");
+                let pcVal = bCore.getPC();
                 case(reg_addr_slice)
-                    'h0 : regSpaceRet <= tagged Valid regCmd;                    
+                    'h0 : regSpaceRet <= tagged Valid regCmd;    
+                    'h1 : regSpaceRet <= tagged Valid pcVal[valueOf(BDataWidth)-1:0];
+                    'h2 : regSpaceRet <= tagged Valid pcVal[valueOf(BMemAddrWidth)-1:valueOf(BDataWidth)];
                     default : $display("No read operation to internal registers is performed.");
                 endcase
             end
@@ -203,7 +223,7 @@ module mkBCpu(BCpu_IFC);
         // for indexing of the address space
         let space_addr_slice = addr[valueOf(BAddrWidth)-1:valueOf(BAddrWidth)-2];
         let mem_addr_slice   = addr[valueOf(BAddrWidth)-3:0];
-        let reg_addr_slice   = addr[3:0];
+        let reg_addr_slice   = addr[4:0];
 
         case (space_addr_slice) 
             cellSpace : begin
@@ -223,7 +243,14 @@ module mkBCpu(BCpu_IFC);
             regSpace  : begin
                 $display("BCpu write: Writing INTERNAL REGISTERS.");
                 case(reg_addr_slice)
-                   'h0 : regCmd <= data;                    
+                   'h0 : regCmd         <= data;            
+                   'h1 : regWorkPcLsb   <= data;
+                   'h2 : begin
+                            // Setup new PC based on passed data
+                            let tmpPc = {data,regWorkPcLsb};
+                            let newPc = unpack(tmpPc[valueOf(BMemAddrWidth)-1:0]);
+                            bCore.setPC(newPc);
+                        end
                     default : $display("No write operation to internal registers is performed.");
                 endcase
             end

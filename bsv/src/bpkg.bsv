@@ -20,7 +20,7 @@ typedef Bit#(BAddrWidth) BAddr;
 typedef 8 BDataWidth;
 typedef Bit#(BDataWidth) BData;
 
-// BRAM memory address types
+// BRAM memory address types (should be two words)
 typedef 10 BMemAddrWidth;
 typedef Bit#(BMemAddrWidth) BMemAddress;
 
@@ -28,6 +28,10 @@ typedef Bit#(BMemAddrWidth) BMemAddress;
 Bit#(2) cellSpace = 'b00;
 Bit#(2) instSpace = 'b01;
 Bit#(2) regSpace  = 'b10;
+
+// Indexes of the command register
+Integer bitEnabled          = 0;
+Integer bitStepEnabled      = 1;
 
 // Generate the address from given space and shift inside the space
 function BAddr getAddress(Bit#(2) space, Bit#(n) shiftInSpace) provisos(Add#(n, 2, BAddrWidth));

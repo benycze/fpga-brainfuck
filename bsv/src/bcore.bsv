@@ -31,6 +31,10 @@ interface BCore_IFC#(type typeAddr, type typeData);
 
     // Control interface
     method Action setEnabled(Bool enabled);
+    method Action setPC(typeAddr pc);
+
+    // Data response interface
+    method typeAddr getPC();
 endinterface
 
 module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
@@ -89,6 +93,14 @@ module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
 
     method Action setEnabled(Bool enabled);
         regCoreEnabled <= enabled;
+    endmethod
+
+    method typeAddr getPC();
+        return regPc;
+    endmethod
+
+    method Action setPC(typeAddr pc);
+        regPc <= pc;
     endmethod
 
     interface BRAM2PortClient cell_ifc;

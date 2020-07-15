@@ -123,6 +123,8 @@ Register address space has following layout:
 | Address               |   Comment                         |
 |-----------------------|-----------------------------------|
 | 0x800                 | CPU enabled                       |
+| 0x801                 | Lower half of the PC              |
+| 0x802                 | Upper half of the PC              |
 
 ## Compilation of the Brainfuck code
 
