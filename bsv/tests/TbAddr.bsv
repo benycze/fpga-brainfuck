@@ -14,7 +14,7 @@ import bpkg :: *;
 import StmtFSM :: *;
 
 (* synthesize *)
-module mkTb (Empty);
+module mkTbAddr (Empty);
 
     BCpu_IFC mcpu <- mkBCpu;
 
@@ -73,6 +73,6 @@ module mkTb (Empty);
 
     mkAutoFSM(fsmMemTest);
 
-endmodule : mkTb 
+endmodule : mkTbAddr 
 
 endpackage : Tb
