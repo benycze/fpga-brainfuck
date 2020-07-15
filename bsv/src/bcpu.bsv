@@ -9,9 +9,12 @@
 package bcpu;
 
 import bpkg  :: *;
-import FIFO  :: *;
-import bmem  :: *;
+import bcore :: *;
+
 import BRAM  :: *;
+import FIFO  :: *;
+import ClientServer :: *;
+import Connectable  :: *;
 
 // Generic CPU interface -- the type addr specifies the
 // memory address widht and type data specifies the initial 
@@ -50,8 +53,6 @@ module mkBCpu(BCpu_IFC);
     // ------------------------------------------------------------------------
 
     // Registers ------------------------------------------
-        // Program counter (we need to address the whole BRAM address space
-    Reg#(BMemAddress)   regPc  <- mkReg(0);
         // Command register (8 bits)
     Reg#(Bit#(8))       regCmd <- mkReg(0);
         // Parse the command register
@@ -61,12 +62,22 @@ module mkBCpu(BCpu_IFC);
         // Cell memory
     BRAM_Configure cellCfg = defaultValue;
     cellCfg.allowWriteResponseBypass = False;
-    BMem_IFC#(BMemAddress, BData)  cellMem <- mkBMEM(cellCfg);    
+    BRAM2Port#(BMemAddress,BData)  cellMem <- mkBRAM2Server(cellCfg);  
 
         // Instruction memory
     BRAM_Configure instCfg = defaultValue;
     instCfg.allowWriteResponseBypass = False;
-    BMem_IFC#(BMemAddress, BData) instMem <- mkBMEM(instCfg);   
+    BRAM2Port#(BMemAddress,BData) instMem <- mkBRAM2Server(instCfg);  
+
+        // BCPU Core
+    BCore_IFC#(BMemAddress, BData) bCore <- mkBCore;
+
+        // Connect the core with memories
+    mkConnection(bCore.cell_ifc.portB,cellMem.portB);
+    mkConnection(bCore.inst_ifc.portB,instMem.portB);
+        // Port A is also used for the access form SW and CPU
+    FIFO#(BRAMRequest#(BMemAddress,BData)) cellReq <- mkFIFO;
+    FIFO#(BRAMRequest#(BMemAddress,BData)) instReq <- mkFIFO;
     
         // Helping registers
     Reg#(Bool)              readRunning     <- mkReg(False);
@@ -79,29 +90,59 @@ module mkBCpu(BCpu_IFC);
     // Rules 
     // ------------------------------------------------------------------------
 
+        // Rules for multiplexing of port A from SW and CORE
+    rule drain_req_from_cell_fifo (!cmdEn);
+        let data = cellReq.first;
+        cellReq.deq;
+        cellMem.portA.request.put(data);
+    endrule
+
+    rule drain_req_from_cell_client;
+        let data <- bCore.cell_ifc.portA.request.get();
+        cellMem.portA.request.put(data);
+    endrule
+
+    rule drain_req_from_inst_fifo (!cmdEn);
+        let data = instReq.first;
+        instReq.deq;
+        instMem.portA.request.put(data);
+    endrule
+    
+    rule drain_req_from_inst_client;
+        let data <- bCore.inst_ifc.portA.request.get();
+        instMem.portA.request.put(data);
+    endrule
+
         // Rules for the selecction of output data from internal registers
         // or command register. Data in command register. BRAM memory is written 
         // into the FIFO, output register data are written to the special register
         // during the read and multiplexed to the output.
-    rule drain_data_from_cell_memory_app (!cmdEn);
-        let ret_data <- cellMem.memGetReadResponse(); 
+    (* mutually_exclusive = "drain_data_from_cell_memory_app, drain_data_from_instruction_memory_app, drain_reg" *)
+    rule drain_data_from_cell_memory_app (!cmdEn && readRunning);
+        let ret_data <- cellMem.portA.response.get; 
         readRetData.enq(ret_data);
         readRunning <= False;
         $display("BCpu: draining data from cell memory (during non-operational mode).");
     endrule
 
-    rule drain_data_from_instruction_memory_app(!cmdEn);
-        let ret_data <- instMem.memGetReadResponse();
+    rule drain_data_from_instruction_memory_app(!cmdEn && readRunning);
+        let ret_data <- instMem.portA.response.get;
         readRetData.enq(ret_data);
         readRunning <= False;
         $display("BCpu: draining data from instruction memory (during non-operational mode).");
     endrule
 
-    rule drain_reg (regSpaceRet matches tagged Valid .data);
+    rule drain_reg (regSpaceRet matches tagged Valid .data &&& readRunning);
         readRetData.enq(data);
         regSpaceRet <= tagged Invalid;
         readRunning <= False;
         $display("BCpu: draining data from the register space");
+    endrule
+
+        // Configure enable/disable signals to the BCore
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule put_bcore_config;
+        bCore.setEnabled(cmdEn);
     endrule
 
     // ------------------------------------------------------------------------
@@ -121,14 +162,14 @@ module mkBCpu(BCpu_IFC);
             cellSpace : begin
                 $display("BCpu read: Reading the CELL memory.");
                 if(!cmdEn)
-                    cellMem.memPutReadReq(mem_addr_slice);
+                    cellReq.enq(makeBRAMRequest(False,mem_addr_slice,0));
                 else
                     $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
            instSpace  : begin
                 $display("BCpu read: Reading the INSTRUCTION memory.");
                 if(!cmdEn)
-                    instMem.memPutReadReq(mem_addr_slice);
+                    instReq.enq(makeBRAMRequest(False,mem_addr_slice,0));
                 else
                     $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
@@ -168,14 +209,14 @@ module mkBCpu(BCpu_IFC);
             cellSpace : begin
                 $display("BCpu write: Writing the CELL memory.");
                 if(!cmdEn)
-                    cellMem.memPutWriteReq(mem_addr_slice,data);
+                    cellReq.enq(makeBRAMRequest(True,mem_addr_slice,data));
                 else
                     $display("BCpu write: It is not allowed to work with memory during the operational mode.");
             end
            instSpace  : begin
                 $display("BCpu write: Writing the INSTRUCTION memory.");
                 if(!cmdEn)
-                    instMem.memPutWriteReq(mem_addr_slice,data);
+                    instReq.enq(makeBRAMRequest(True,mem_addr_slice,data));
                 else
                     $display("BCpu write: It is not allowed to work with memory during the operational mode."); 
             end

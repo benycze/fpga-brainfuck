@@ -19,7 +19,7 @@ TOPMODULE = mkBCpu
 # Targets
 # -------------------------------------------------------------------------------
 
-all: compile sim
+all: compile
 
 build:
 	mkdir -p $@
