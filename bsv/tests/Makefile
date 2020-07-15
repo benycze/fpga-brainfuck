@@ -18,6 +18,8 @@ include ../Common_Inc.mk
 # Targets
 # -------------------------------------------------------------------------------
 
+default: test_all vtest_all
+
 # How to create a test:
 # 1] Create a test (BSV file) - the name of the top module should have a pattern mkFILENAME. 
 #    For example, if the file is named TbFoo --> top module name has to be mkTbFoo
