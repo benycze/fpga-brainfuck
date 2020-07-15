@@ -8,17 +8,20 @@
 
 package bcore;
 
+import bpkg :: *;
+
 import BRAM :: *;
 import FIFO :: *;
 import ClientServer :: *;
 
+import Vector :: *;
+
 interface BRAM2PortClient#(type typeAddr, type typeData);
-    // First port memory
+    // First memory port
     interface BRAMClient#(typeAddr, typeData) portA;
-    // Second port memory
+    // Second memory port
     interface BRAMClient#(typeAddr, typeData) portB;
 endinterface
-
 
 interface BCore_IFC#(type typeAddr, type typeData);
 
@@ -31,7 +34,8 @@ interface BCore_IFC#(type typeAddr, type typeData);
 endinterface
 
 module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
-    Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData), Literal#(typeAddr)    
+    Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData),
+    Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr)
 );
 
     // ----------------------------------------------------
@@ -53,6 +57,31 @@ module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
     RWire#(BRAMRequest#(typeAddr,typeData))  instMemPortBReq <- mkRWire;
     RWire#(typeData)                         instMemPortBRes <- mkRWire;
 
+    // ----------------------------------------------------
+    // Rules and folks
+    // ----------------------------------------------------
+
+    // BRAM  DEMO ================================
+    Reg#(typeAddr) regAddrCellA <- mkReg(0);
+    Vector#(2,Reg#(typeData)) regDest <- replicateM (mkReg(0));
+
+    Integer dataBitSize = valueOf(SizeOf#(typeData));
+    rule feed_cell_mem (regCoreEnabled);
+        typeData tmpData = unpack(pack(regAddrCellA)[dataBitSize-1:0]);
+        let portA = makeBRAMRequest(True, regAddrCellA, tmpData);
+        let portB = makeBRAMRequest(True, regAddrCellA + 512, tmpData);
+        cellMemPortAReq.wset(portA);
+        cellMemPortBReq.wset(portB);
+        regAddrCellA <= regAddrCellA + 1;
+    endrule
+
+    rule drain_cell_memA if(cellMemPortARes.wget() matches tagged Valid .d);
+        regDest[0] <= d;
+    endrule
+
+    rule drain_cell_memB if(cellMemPortBRes.wget() matches tagged Valid .d);
+        regDest[1] <= d;
+    endrule
 
     // ----------------------------------------------------
     // Define methods & interfaces
@@ -74,5 +103,10 @@ module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
     
 endmodule : mkBCore
 
+(* synthesize *)
+module mkBCoreSynth (BCore_IFC#(BMemAddress,BData));
+    BCore_IFC#(BMemAddress, BData) m <- mkBCore;
+    return m;
+endmodule
     
 endpackage : bcore

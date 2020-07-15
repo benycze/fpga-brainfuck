@@ -70,7 +70,7 @@ module mkBCpu(BCpu_IFC);
     BRAM2Port#(BMemAddress,BData) instMem <- mkBRAM2Server(instCfg);  
 
         // BCPU Core
-    BCore_IFC#(BMemAddress, BData) bCore <- mkBCore;
+    BCore_IFC#(BMemAddress, BData) bCore <- mkBCoreSynth;
 
         // Connect the core with memories
     mkConnection(bCore.cell_ifc.portB,cellMem.portB);
