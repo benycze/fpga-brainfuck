@@ -153,7 +153,9 @@ module mkBCpu(BCpu_IFC);
         if(stepEn || cmdEn) begin
             // Enable the CPU, switch the step off
             bCore.setEnabled(True);
-        end 
+        end else begin
+            bCore.setEnabled(False);
+        end
 
         // Switch the stop off, if it was enabled (and with logical 0)
         tmpCmdReg[bitStepEnabled] = tmpCmdReg[bitStepEnabled] & 0;
@@ -206,7 +208,8 @@ module mkBCpu(BCpu_IFC);
         endcase
         readRunning <= True;
 
-        $displayh("BCpu read: Read method fired on address 0x",addr);
+        $display("Time = ",$time);
+        $displayh("* BCpu read: Read method fired on address 0x",addr);
     endmethod
 
     method ActionValue#(BData) getData();
@@ -259,7 +262,8 @@ module mkBCpu(BCpu_IFC);
             end
         endcase
 
-        $displayh("BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
+        $display("Time = ",$time);
+        $displayh("* BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
     endmethod
 
     method Bool getReadRunning();

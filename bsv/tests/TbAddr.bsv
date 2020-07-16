@@ -68,6 +68,19 @@ module mkTbAddr (Empty);
         endaction
         mcpu.write(getAddress(regSpace,0),'h0);
 
+        $display("Try to write the step enabled and check if the  unit was enabled");
+        mcpu.write(getAddress(regSpace,0),'h2);
+        delay(1);
+        mcpu.read(getAddress(regSpace,0));
+        action
+            let ret <- mcpu.getData();
+            if(ret != 0) begin
+                $display("Step flag has to be zero now.");
+                $finish(1);
+            end
+            $displayh("Command register during the EN mode --> 0x",ret);
+        endaction
+
         $display("== END READ & WRITE tests ===========");  
     endseq;
 
