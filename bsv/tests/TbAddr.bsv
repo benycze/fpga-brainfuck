@@ -81,6 +81,30 @@ module mkTbAddr (Empty);
             $displayh("Command register during the EN mode --> 0x",ret);
         endaction
 
+        delay(10);
+        $display("PC testing - upload and download of the value");
+        mcpu.write(getAddress(regSpace,1), 'h34);
+        mcpu.write(getAddress(regSpace,2), 'h02);
+        mcpu.read(getAddress(regSpace,1));
+        action
+            let readData <- mcpu.getData();
+            data_reg0 <= readData;
+            mcpu.read(getAddress(regSpace,2));
+        endaction
+        action 
+            let readData <-  mcpu.getData();
+            data_reg1 <= readData;
+        endaction   
+        action
+            if(data_reg0 != 'h34 && data_reg1 != 'h02)begin
+                $display("PC value read/write is not working!");
+                $display("* expected - 0x02 (MSB) and 0x34 (LSB)");
+                $displayh("* received - 0x",addr_reg1,"(MSB) and 0x",addr_reg0," (LSB)");
+                $finish(1);
+            end
+        endaction
+        $display("PC testing was finished!!");
+
         $display("== END READ & WRITE tests ===========");  
     endseq;
 
