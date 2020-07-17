@@ -26,6 +26,11 @@ module mkTbAddr (Empty);
     Reg#(BData) data_reg1   <- mkReg(0);
     Reg#(BAddr) addr_reg1   <- mkReg(0);
 
+    // Testing data for the PC
+    BData pc0 = 'h31;
+    BData pc1 = 'h02;
+
+
     Stmt fsmMemTest = seq 
         $display(" == READ & WRITE tests ==============");
         $display("Testing read/write to cell memory ...");
@@ -83,8 +88,8 @@ module mkTbAddr (Empty);
 
         delay(10);
         $display("PC testing - upload and download of the value");
-        mcpu.write(getAddress(regSpace,1), 'h34);
-        mcpu.write(getAddress(regSpace,2), 'h02);
+        mcpu.write(getAddress(regSpace,1), pc0);
+        mcpu.write(getAddress(regSpace,2), pc1);
         mcpu.read(getAddress(regSpace,1));
         action
             let readData <- mcpu.getData();
@@ -96,9 +101,9 @@ module mkTbAddr (Empty);
             data_reg1 <= readData;
         endaction   
         action
-            if(data_reg0 != 'h34 && data_reg1 != 'h02)begin
+            if(data_reg0 != pc0 && data_reg1 != pc1)begin
                 $display("PC value read/write is not working!");
-                $display("* expected - 0x02 (MSB) and 0x34 (LSB)");
+                $display("* expected - 0x",pc1," (MSB) and 0x",pc0," (LSB)");
                 $displayh("* received - 0x",addr_reg1,"(MSB) and 0x",addr_reg0," (LSB)");
                 $finish(1);
             end
