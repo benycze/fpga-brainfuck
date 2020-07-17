@@ -30,8 +30,11 @@ Bit#(2) instSpace = 'b01;
 Bit#(2) regSpace  = 'b10;
 
 // Indexes of the command register
-Integer bitEnabled          = 0;
-Integer bitStepEnabled      = 1;
+Integer bitEnabled     = 0;
+Integer bitStepEnabled = 1;
+
+// Configuration of the BCore
+Integer bCoreInoutSize = 8;
 
 // Generate the address from given space and shift inside the space
 function BAddr getAddress(Bit#(2) space, Bit#(n) shiftInSpace) provisos(Add#(n, 2, BAddrWidth));

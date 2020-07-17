@@ -194,11 +194,18 @@ module mkBCpu(BCpu_IFC);
             end
             regSpace  : begin
                 $display("BCpu read: Reading INTERNAL REGISTERS.");
-                let pcVal = bCore.getPC();
+                // Prepare data there & send them
+                let pcVal    = bCore.getPC();
+                let flagData = {'0, pack(bCore.outputDataAvailable())};
                 case(reg_addr_slice)
                     'h0 : regSpaceRet <= tagged Valid regCmd;    
                     'h1 : regSpaceRet <= tagged Valid pcVal[valueOf(BDataWidth)-1:0];
                     'h2 : regSpaceRet <= tagged Valid pcVal[valueOf(BMemAddrWidth)-1:valueOf(BDataWidth)];
+                    'h3 : regSpaceRet <= tagged Valid flagData;
+                    'h4 : begin
+                        let data <- bCore.outputDataGet();
+                        regSpaceRet <= tagged Valid data;
+                        end
                     default : $display("No read operation to internal registers is performed.");
                 endcase
             end
@@ -254,6 +261,8 @@ module mkBCpu(BCpu_IFC);
                             let newPc = unpack(tmpPc[valueOf(BMemAddrWidth)-1:0]);
                             bCore.setPC(newPc);
                         end
+                    'h3: $display("This offset is allocated for flag registers which are read-only.");
+                    'h4: bCore.inputDataPush(data);
                     default : $display("No write operation to internal registers is performed.");
                 endcase
             end

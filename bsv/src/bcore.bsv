@@ -12,9 +12,9 @@ import bpkg :: *;
 
 import BRAM :: *;
 import FIFO :: *;
-import ClientServer :: *;
-
+import FIFOF :: *;
 import Vector :: *;
+import ClientServer :: *;
 
 interface BRAM2PortClient#(type typeAddr, type typeData);
     // First memory port
@@ -35,9 +35,19 @@ interface BCore_IFC#(type typeAddr, type typeData);
 
     // Data response interface
     method typeAddr getPC();
+
+    // Deal with input/output data
+    method Action inputDataPush(typeData data);
+    method Bool outputDataAvailable();
+    method ActionValue#(typeData) outputDataGet();
+    
 endinterface
 
-module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
+// The BCPU core code which implements the processing of the Brainfuck code.
+// Parameters:
+// - inoutFifoSize - output/input FIFO size
+//
+module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData)) provisos (
     Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData),
     Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr)
 );
@@ -49,6 +59,9 @@ module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
     Reg#(Bool) regCoreEnabled <- mkReg(False);
     // Program counter (we need to address the whole BRAM address space
     Reg#(typeAddr) regPc <- mkReg(0);
+    // FIFO with output data from the BCore
+    FIFOF#(typeData) outDataFifo <- mkSizedFIFOF(inoutFifoSize);
+    FIFOF#(typeData) inDataFifo  <- mkSizedFIFOF(inoutFifoSize);
 
     // FIFO memories to read/write requests 
     RWire#(BRAMRequest#(typeAddr,typeData))  cellMemPortAReq <- mkRWire;
@@ -112,12 +125,26 @@ module mkBCore(BCore_IFC#(typeAddr,typeData)) provisos (
         interface BRAMClient portA = toGPClient(instMemPortAReq, instMemPortARes);
         interface BRAMClient portB = toGPClient(instMemPortBReq, instMemPortBRes);
     endinterface
+
+    method Action inputDataPush(typeData data);
+        inDataFifo.enq(data);
+    endmethod
+
+    method Bool outputDataAvailable();
+        return outDataFifo.notEmpty();
+    endmethod
+
+    method ActionValue#(typeData) outputDataGet();
+        let ret = outDataFifo.first;
+        outDataFifo.deq();
+        return ret;
+    endmethod   
     
 endmodule : mkBCore
 
 (* synthesize *)
 module mkBCoreSynth (BCore_IFC#(BMemAddress,BData));
-    BCore_IFC#(BMemAddress, BData) m <- mkBCore;
+    BCore_IFC#(BMemAddress, BData) m <- mkBCore(bCoreInoutSize);
     return m;
 endmodule
     
