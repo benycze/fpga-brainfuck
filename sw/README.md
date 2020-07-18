@@ -120,11 +120,26 @@ is allowed anytime.
 
 Register address space has following layout:
 
-| Address               |   Comment                         |
-|-----------------------|-----------------------------------|
-| 0x800                 | CPU enabled                       |
-| 0x801                 | Lower half of the PC              |
-| 0x802                 | Upper half of the PC              |
+| Address               |   Comment                                     |
+|-----------------------|-----------------------------------------------|
+| 0x800                 | CPU enabled                                   |
+| 0x801                 | Lower half of the PC                          |
+| 0x802                 | Upper half of the PC                          |
+| 0x803                 | Flag register                                 |
+| 0x804                 | Read/Write input/outou to/from the BCPU       |
+
+Input/output to BCPU is stored into internal FIFO fronts. The input FIFO front is read by the BCPU
+core when the required instruction is asserted. Output from the BCPU is stored in the output FIFO and the output
+flag is set if any data are available.
+
+Flag register structure:
+
+| Bit index            |   Comment                                      |
+|----------------------|------------------------------------------------|
+| 0                    | Output data available                          |
+| 1                    | Input data FIFO is full                        |
+| 2                    | Output data FIFO is full                       |
+| 3 - 7                | Reserved - set to 0                            | 
 
 ## Compilation of the Brainfuck code
 

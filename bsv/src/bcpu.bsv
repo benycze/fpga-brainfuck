@@ -196,7 +196,12 @@ module mkBCpu(BCpu_IFC);
                 $display("BCpu read: Reading INTERNAL REGISTERS.");
                 // Prepare data there & send them
                 let pcVal    = bCore.getPC();
-                let flagData = {'0, pack(bCore.outputDataAvailable())};
+                let flagData = {'0, 
+                    pack(bCore.outputDataFull()),
+                    pack(bCore.inputDataFull()),
+                    pack(bCore.outputDataAvailable())
+                };
+
                 case(reg_addr_slice)
                     'h0 : regSpaceRet <= tagged Valid regCmd;    
                     'h1 : regSpaceRet <= tagged Valid pcVal[valueOf(BDataWidth)-1:0];

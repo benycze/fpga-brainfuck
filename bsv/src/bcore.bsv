@@ -36,11 +36,18 @@ interface BCore_IFC#(type typeAddr, type typeData);
     // Data response interface
     method typeAddr getPC();
 
-    // Deal with input/output data
+    // Deal with input/output data:
+    // - check if the inout data FIFO is full
+    // - push data into the FIFO
+    // - outout data are available
+    // - get the output data
+    // - output data fifo is full
+    method Bool inputDataFull();
     method Action inputDataPush(typeData data);
     method Bool outputDataAvailable();
     method ActionValue#(typeData) outputDataGet();
-    
+    method Bool outputDataFull();
+
 endinterface
 
 // The BCPU core code which implements the processing of the Brainfuck code.
@@ -126,6 +133,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         interface BRAMClient portB = toGPClient(instMemPortBReq, instMemPortBRes);
     endinterface
 
+    method Bool inputDataFull();
+        return !inDataFifo.notFull();
+    endmethod 
+
     method Action inputDataPush(typeData data);
         inDataFifo.enq(data);
     endmethod
@@ -139,6 +150,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         outDataFifo.deq();
         return ret;
     endmethod   
+
+    method Bool outputDataFull();
+        return !outDataFifo.notFull();
+    endmethod 
     
 endmodule : mkBCore
 
