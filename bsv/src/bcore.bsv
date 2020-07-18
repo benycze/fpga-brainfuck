@@ -107,6 +107,13 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         regDest[1] <= d;
     endrule
 
+    // Create a loopback between input and output FIFO fronts
+    rule resend_input (regCoreEnabled);
+        let dataIn = inDataFifo.first;
+        inDataFifo.deq();
+        outDataFifo.enq(dataIn);
+    endrule
+
     // ----------------------------------------------------
     // Define methods & interfaces
     // ----------------------------------------------------
