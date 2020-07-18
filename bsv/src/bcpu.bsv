@@ -90,6 +90,13 @@ module mkBCpu(BCpu_IFC);
     Reg#(Maybe#(BData))     regSpaceRet     <- mkReg(tagged Invalid);
     FIFO#(BData)            readRetData     <- mkFIFO;
 
+    // Read / write registers because we don't want to block the read/write 
+    // methods. Therefore, the input/outout FIFO fronts has 1 more available 
+    // slot because the FIFO flag is asserted when it is already full --> write/read
+    // from the software will fail in that case.
+    Reg#(Maybe#(BData))     outputBcoreData <- mkReg(tagged Invalid);
+    Reg#(Maybe#(BData))     inputBCoreData  <- mkReg(tagged Invalid);
+
     // ------------------------------------------------------------------------
     // Rules 
     // ------------------------------------------------------------------------
@@ -164,6 +171,18 @@ module mkBCpu(BCpu_IFC);
         regCmd <= tmpCmdReg;
     endrule
 
+    rule drain_bcore_output_data (outputBcoreData matches tagged Invalid);
+        $display("Draining output data from the BCore unit");
+        let data <- bCore.outputDataGet();
+        outputBcoreData <= tagged Valid data;
+    endrule
+
+    rule push_bcore_input_data (inputBCoreData matches tagged Valid .d);
+        $display("Pusing inptut data to the BCore unit");
+        bCore.inputDataPush(d);
+        inputBCoreData <= tagged Invalid;
+    endrule
+
     // ------------------------------------------------------------------------
     // Methods 
     // ------------------------------------------------------------------------
@@ -175,7 +194,7 @@ module mkBCpu(BCpu_IFC);
         // data memory, program memory and internal registers
         let space_addr_slice = addr[valueOf(BAddrWidth)-1:valueOf(BAddrWidth)-2];
         let mem_addr_slice   = addr[valueOf(BAddrWidth)-3:0];
-        let reg_addr_slice   = addr[4:0];
+        let reg_addr_slice   = addr[3:0];
         case (space_addr_slice) 
             //cellSpace  : begin
             cellSpace : begin
@@ -199,7 +218,7 @@ module mkBCpu(BCpu_IFC);
                 let flagData = {'0, 
                     pack(bCore.outputDataFull()),
                     pack(bCore.inputDataFull()),
-                    pack(bCore.outputDataAvailable())
+                    pack(isValid(outputBcoreData))
                 };
 
                 case(reg_addr_slice)
@@ -208,12 +227,12 @@ module mkBCpu(BCpu_IFC);
                     'h2 : regSpaceRet <= tagged Valid pcVal[valueOf(BMemAddrWidth)-1:valueOf(BDataWidth)];
                     'h3 : regSpaceRet <= tagged Valid flagData;
                     'h4 : begin
-                        let data <- bCore.outputDataGet();
-                        regSpaceRet <= tagged Valid data;
+                            regSpaceRet <= tagged Valid fromMaybe(0,outputBcoreData);
+                            outputBcoreData <= tagged Invalid;
                         end
                     default : $display("No read operation to internal registers is performed.");
                 endcase
-            end
+            end // End of the Register space
            default : begin
                 $display("BCpu read: Required address space wasn't found.");
             end
@@ -238,7 +257,7 @@ module mkBCpu(BCpu_IFC);
         // for indexing of the address space
         let space_addr_slice = addr[valueOf(BAddrWidth)-1:valueOf(BAddrWidth)-2];
         let mem_addr_slice   = addr[valueOf(BAddrWidth)-3:0];
-        let reg_addr_slice   = addr[4:0];
+        let reg_addr_slice   = addr[3:0];
 
         case (space_addr_slice) 
             cellSpace : begin
@@ -267,7 +286,7 @@ module mkBCpu(BCpu_IFC);
                             bCore.setPC(newPc);
                         end
                     'h3: $display("This offset is allocated for flag registers which are read-only.");
-                    'h4: bCore.inputDataPush(data);
+                    'h4: inputBCoreData <= tagged Valid data;
                     default : $display("No write operation to internal registers is performed.");
                 endcase
             end

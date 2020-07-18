@@ -39,7 +39,7 @@ interface BCore_IFC#(type typeAddr, type typeData);
     // Deal with input/output data:
     // - check if the inout data FIFO is full
     // - push data into the FIFO
-    // - outout data are available
+    // - output data are available
     // - get the output data
     // - output data fifo is full
     method Bool inputDataFull();
@@ -108,7 +108,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     endrule
 
     // Create a loopback between input and output FIFO fronts
-    rule resend_input (regCoreEnabled);
+    rule resend_input;
         let dataIn = inDataFifo.first;
         inDataFifo.deq();
         outDataFifo.enq(dataIn);
