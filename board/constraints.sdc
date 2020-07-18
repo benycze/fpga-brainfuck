@@ -6,11 +6,14 @@
 #  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 # -------------------------------------------------------------------------------
 
-# Clocks
+# Clocks & folks
 create_clock -name CLK -period 83.333 [get_ports {CLK}]
 
 derive_pll_clocks
 derive_clock_uncertainty
+
+# All clocks are unrelated --> the design is taking them as async
+set_clock_groups -asynchronous -group [get_clocks {CLK}] -group [get_clocks {pll_i|*|clk*}]
 
 # Reset doesn't need to be constrained because it is a button which is passed to the 
 # reset synchronizers
