@@ -1,6 +1,6 @@
-# Braninfuck CPU for FPGA
+# Brainfuck CPU for FPGA
 
-This repository contains a source code and desing of the CPU processing the Brainfuck code in FPGA. 
+This repository contains a source code and desing of the CPU processing the Brainfuck code in FPGA. The design is quite simple and it is targeted on beginning FPGA programmers.
 
 * Development board [CYC1000](https://shop.trenz-electronic.de/en/Products/Trenz-Electronic/CYC1000-Intel-Cyclone-10/), [documentation](https://www.trenz-electronic.de/fileadmin/docs/Trenz_Electronic/Modules_and_Module_Carriers/2.5x6.15/TEI0003/REV02/Documents/CYC1000%20User%20Guide.pdf), [resources](https://shop.trenz-electronic.de/en/TEI0003-02-CYC1000-with-Cyclone-10-FPGA-8-MByte-SDRAM?path=Trenz_Electronic/Modules_and_Module_Carriers/2.5x6.15/TEI0003/Driver/Arrow_USB_Programmer)
 * Languages - VHDL, Bluespec
@@ -40,7 +40,8 @@ Enter the _bsv_ folder and run the `make` command. This produce the RTL code of 
 in the `bsv` folder. The folder also contains a Makefile which is capable to prepare a tarball for Quartus tool. Use the `make help` command for more details.
 There is also a possibilty to use the `start-container.sh --translate-only` to run the translate & exit only - output will be stored in the `bsv/tarball` folder.
 
-2. **Translation of the HDL code** - TODO
+2. **Translation of the HDL code** - the HDL translation is using the Quartus toolchain
+from Intel. The provided build system takes care of everything - translation of the Bluespec code and then synthesis of the HDL code to SOF file which can be then uploaded to the FPGA. You can find more details about available targets in the `board` folder. **I am new with Bluespec in the time of the writing. So, please be patient and excuse some of my constructs if you are skilled Bluespec programmer :-).**
 
 ## How to translate and upload the code
 
