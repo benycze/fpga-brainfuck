@@ -5,7 +5,10 @@
 //  LICENSE: The MIT License (MIT), please read LICENSE file
 //  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 // -------------------------------------------------------------------------------
+
 package binst;
+
+    import bpkg :: *;
 
     // Specification of support BCPU instructions. The union is possible to covert
     // to bits and, compare them and print them using the fshow function in the 
@@ -24,6 +27,19 @@ package binst;
         void    I_SaveIn;       // Save the input to current cell - ","
         void    I_JmpEnd;       // Move the pointer to the corresponding ] - "["
         void    I_JmpBegin;     // Move the poiter to the correspodnig [ - "]"
-    } BInst_t deriving (Bits,Eq,FShow);
+    } BInst deriving (Bits,Eq,FShow);
+
+    // For more comfortable work, we will implement a unpack functions from BData (8-bit) 
+    // to the BInst values (less than 8 bits). The BData is the elementary unit of data which 
+    // are used for the operation inside the processor.
+    function BInst getInstruction(td data) provisos (
+        Bits#(BInst, n_bInst),Bits#(td,n_szT),
+        Add#(n_szT,unused,n_szT)
+    );
+        Integer bInstSize = valueOf(SizeOf#(BInst));
+        Bit#(bInstSize) inst = pack(data)[bInstSize-1:0];   
+        return unpack(inst);
+    endfunction
+
 
 endpackage : binst
