@@ -108,25 +108,25 @@ You can also handle the tested address space using the `--min-test-addr` and `--
 
 ## Address space
 
-Braninfuck CPU is using the 12-bit address space. Reading from _Instruction_ and _Cell_
+Braninfuck CPU is using the 16-bit address space. Reading from _Instruction_ and _Cell_
 memory is allowed if the CPU is not enabled. Reading from the register address space
 is allowed anytime.
 
 |   Address space       |    Coment                         |
 |-----------------------|-----------------------------------|
-| 0x0 - 0x3FF           | Cell memory address space         |
-| 0x400 - 0x7FF         | Instruction memory address space  |
-| 0x800 - 0xBFF         | Register address space            |
+| 0x0 - 0x3FFF          | Cell memory address space         |
+| 0x4000 - 0x7FFF       | Instruction memory address space  |
+| 0x8000 - 0xBFFF       | Register address space            |
 
 Register address space has following layout:
 
 | Address               |   Comment                                     |
 |-----------------------|-----------------------------------------------|
-| 0x800                 | CPU enabled                                   |
-| 0x801                 | Lower half of the PC                          |
-| 0x802                 | Upper half of the PC                          |
-| 0x803                 | Flag register                                 |
-| 0x804                 | Read/Write input/outou to/from the BCPU       |
+| 0x8000                | CPU enabled                                   |
+| 0x8001                | Lower half of the PC                          |
+| 0x8002                | Upper half of the PC                          |
+| 0x8003                | Flag register                                 |
+| 0x8004                | Read/Write input/outou to/from the BCPU       |
 
 Input/output to BCPU is stored into internal FIFO fronts. The input FIFO front is read by the BCPU
 core when the required instruction is asserted. Output from the BCPU is stored in the output FIFO and the output

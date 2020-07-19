@@ -13,7 +13,7 @@ import BRAM :: *;
 // Typedefs ---------------------------------------------------------
 
 // Address for reading from the BCpu entity
-typedef  12 BAddrWidth;
+typedef 16 BAddrWidth;
 typedef Bit#(BAddrWidth) BAddr;
 
 // Data written via the write transaction to the BCpu
@@ -21,7 +21,7 @@ typedef 8 BDataWidth;
 typedef Bit#(BDataWidth) BData;
 
 // BRAM memory address types (should be two words)
-typedef 10 BMemAddrWidth;
+typedef 14 BMemAddrWidth;
 typedef Bit#(BMemAddrWidth) BMemAddress;
 
 // Address space constants
