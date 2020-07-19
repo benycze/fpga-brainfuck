@@ -9,6 +9,7 @@
 package binst;
 
     import bpkg :: *;
+    import DefaultValue :: *;
 
     // Exports 
     export binst :: *;
@@ -50,5 +51,30 @@ package binst;
         return unpack(inst);
     endfunction
 
+    // Helping structure which holds the de-coded instruction and helps us
+    // to work with a bit flags in the next processing
+    typedef struct {
+        Bool dataPtrInc;
+        Bool dataPtrDec;
+        Bool dataInc;
+        Bool dataDec;
+        Bool takeIn;
+        Bool takeOut;
+        Bool jmpEnd;
+        Bool jmpBegin;
+    } RegCmdSt deriving (Bits,FShow);
+
+    instance DefaultValue #(RegCmdSt);
+        defaultValue = RegCmdSt{
+            dataPtrInc  : False, 
+            dataPtrDec  : False,
+            dataInc     : False,
+            dataDec     : False,
+            takeIn      : False,
+            takeOut     : False,
+            jmpEnd      : False,
+            jmpBegin    : False
+        };
+    endinstance
 
 endpackage : binst

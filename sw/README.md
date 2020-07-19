@@ -139,7 +139,8 @@ Flag register structure:
 | 0                    | Output data available                          |
 | 1                    | Input data FIFO is full                        |
 | 2                    | Output data FIFO is full                       |
-| 3 - 7                | Reserved - set to 0                            | 
+| 3                    | Invalid operation code has been detected       |
+| 4 - 7                | Reserved - set to 0                            | 
 
 ## Compilation of the Brainfuck code
 
