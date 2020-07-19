@@ -24,7 +24,7 @@ package binst;
     // Opcodes are assigned from 0 to N-1, where N is the number of instructions
 
     typedef union tagged {
-        void    I_Nop;          // No-operation
+        void    I_Nop;          // No-operation - added to the instruction set
         void    I_DataPtrInc;   // Increment of data pointer - ">"
         void    I_DataPtrDec;   // Decrement of data pointer - "<"
         void    I_DataInc;      // Increment the value pointed by the pointer - "+"
