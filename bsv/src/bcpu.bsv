@@ -10,6 +10,7 @@ package bcpu;
 
 import bpkg  :: *;
 import bcore :: *;
+import binst :: *;
 
 import BRAM  :: *;
 import FIFO  :: *;
