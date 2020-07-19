@@ -35,6 +35,10 @@ default: test_all vtest_all
 sim_TbAddr: TbAddr.bsv csim_TbAddr
 vsim_TbAddr: TbAddr.bsv cvsim_TbAddr
 
+.PHONY: sim_TbInst vsim_TbInst
+sim_TbInst: TbInst.bsv csim_TbInst
+vsim_TbInst: TbInst.bsv cvsim_TbInst
+
 # General bluespec targets ---------------------------------------------
 csim_%: %.bsv
 	@echo "Translating the sources ..."
@@ -57,10 +61,10 @@ cvsim_%: %.bsv
 # Run all available tests -------------------------------------------
 
 .PHONY: vtest_all
-vtest_all: vsim_TbAddr
+vtest_all: vsim_TbAddr vsim_TbInst
 
 .PHONY: test_all
-test_all: sim_TbAddr
+test_all: sim_TbAddr sim_TbInst
 
 .PHONY: clean
 clean:
