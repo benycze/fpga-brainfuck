@@ -8,7 +8,8 @@
 
 package bcore;
 
-import bpkg :: *;
+import bpkg  :: *;
+import binst :: *;
 
 import BRAM :: *;
 import FIFO :: *;
@@ -81,13 +82,17 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     RWire#(BRAMRequest#(typeAddr,typeData))  instMemPortBReq <- mkRWire;
     RWire#(typeData)                         instMemPortBRes <- mkRWire;
 
+    // Helping wires between pipe stages
+    PulseWire       stage3_addr_en  <- mkPulseWire;
+    Wire#(typeAddr) stage3_addr     <- mkDWire(0);
+
     // ----------------------------------------------------
     // Rules & folks
     // ----------------------------------------------------
 
     // Processing will be working in three stages:
     // 1) Instruction fetch - the first stage fetch the instruction from the instruction memory
-    //      and increments the PC by 1.
+    //      and increments the PC by 2 (we need to skip the 
     //
     // 2) Instruction decode & operand fetch - this stage decodes the instruction and fetches 
     //      all required operadns (typically just the cell pointer) and pass them to the next
@@ -111,6 +116,42 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // the previous stage (we can do it just in the case that we have some instruction which needs to use the 
     // currenly written value but we will do it like that to have a simpler HW).
 
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule instruction_fetch;
+        // In this stage, we have to read the address from the 
+        // register or we have to take the value from the stage 3.
+            // Prepare parallel values for stages
+        let nonStage1Addr = regPc;
+        let nonStage2Addr = regPc + 1;
+            // Prepare parralel values for non-stages
+        let stage1Addr = stage3_addr;
+        let stage2Addr = stage3_addr + 1;
+
+
+        // Select the instruction address to fetch based on the instruction from
+        // previous stage
+        if(stage3_addr_en)begin
+            instMemPortAReq.wset(makeBRAMRequest(False, stage1Addr, 0));
+            instMemPortBReq.wset(makeBRAMRequest(False, stage2Addr, 0));
+        end else begin
+            instMemPortAReq.wset(makeBRAMRequest(False, nonStage1Addr, 0));
+            instMemPortBReq.wset(makeBRAMRequest(False, nonStage2Addr, 0)); 
+        end
+
+        // Increment the counter by 2 (instructions are 16 bit wide), we need to skip the 8-bit blocks
+        // with the shift value.
+        regPc <= regPc + 2; 
+    endrule
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule instruction_decode_and_operands;
+
+    endrule
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule execution_and_writeback;
+
+    endrule
 
     // ----------------------------------------------------
     // Define methods & interfaces
