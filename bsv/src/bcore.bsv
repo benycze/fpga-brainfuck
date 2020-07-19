@@ -70,7 +70,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     FIFOF#(typeData) outDataFifo <- mkSizedFIFOF(inoutFifoSize);
     FIFOF#(typeData) inDataFifo  <- mkSizedFIFOF(inoutFifoSize);
 
-    // FIFO memories to read/write requests 
+    // FIFO memories to read/write requests to BRAM
     RWire#(BRAMRequest#(typeAddr,typeData))  cellMemPortAReq <- mkRWire;
     RWire#(typeData)                         cellMemPortARes <- mkRWire;
     RWire#(BRAMRequest#(typeAddr,typeData))  cellMemPortBReq <- mkRWire;
@@ -82,37 +82,35 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     RWire#(typeData)                         instMemPortBRes <- mkRWire;
 
     // ----------------------------------------------------
-    // Rules and folks
+    // Rules & folks
     // ----------------------------------------------------
 
-    // BRAM  DEMO ================================
-    Reg#(typeAddr) regAddrCellA <- mkReg(0);
-    Vector#(2,Reg#(typeData)) regDest <- replicateM (mkReg(0));
+    // Processing will be working in three stages:
+    // 1) Instruction fetch - the first stage fetch the instruction from the instruction memory
+    //      and increments the PC by 1.
+    //
+    // 2) Instruction decode & operand fetch - this stage decodes the instruction and fetches 
+    //      all required operadns (typically just the cell pointer) and pass them to the next
+    //      stage.
+    //
+    // 3) Execution & write-back - this stage executes the decoded instructions and writes back
+    //      the result. 
+    //
+    // For the case of "[" and "]" is used the stack which stores the value of the PC (program counter).
+    // In such case, we need take a value from the top of the stack, pass it to the instruction memory and
+    // invalidate the current instruction for the next stage (set the NOP). If the [ instruction is found,
+    // we need to check if the value differs from 0. Iff yes, we will continue with data processing. If no, 
+    // we will take the value from the PC+1, add it to the current PC and set it to the PC (and also invalidate the 
+    // previous stage).
+    // If the value is 0, we add the value which is stored on the next address in the instruction memory 
+    // (therefore the 256-byte jump is allowed). In such case, the currently processed instruction (in previous
+    // stage has to be invalidated) and we need to set the right address in the stage 1 (instruction fetch).
+    // 
+    // When the invalidation is detected, we need to take the value from the third stage. The input/output
+    // is processed in the last stage. In such case, we take the input, store it into the BRAM and invalidate
+    // the previous stage (we can do it just in the case that we have some instruction which needs to use the 
+    // currenly written value but we will do it like that to have a simpler HW).
 
-    Integer dataBitSize = valueOf(SizeOf#(typeData));
-    rule feed_cell_mem (regCoreEnabled);
-        typeData tmpData = unpack(pack(regAddrCellA)[dataBitSize-1:0]);
-        let portA = makeBRAMRequest(True, regAddrCellA, tmpData);
-        let portB = makeBRAMRequest(True, regAddrCellA + 512, tmpData);
-        cellMemPortAReq.wset(portA);
-        cellMemPortBReq.wset(portB);
-        regAddrCellA <= regAddrCellA + 1;
-    endrule
-
-    rule drain_cell_memA if(cellMemPortARes.wget() matches tagged Valid .d);
-        regDest[0] <= d;
-    endrule
-
-    rule drain_cell_memB if(cellMemPortBRes.wget() matches tagged Valid .d);
-        regDest[1] <= d;
-    endrule
-
-    // Create a loopback between input and output FIFO fronts
-    rule resend_input;
-        let dataIn = inDataFifo.first;
-        inDataFifo.deq();
-        outDataFifo.enq(dataIn);
-    endrule
 
     // ----------------------------------------------------
     // Define methods & interfaces

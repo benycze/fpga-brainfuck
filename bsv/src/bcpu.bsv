@@ -55,7 +55,7 @@ module mkBCpu(BCpu_IFC);
 
     // Registers ------------------------------------------
         // Command register (8 bits)
-    Reg#(Bit#(8))   regCmd      <- mkReg(0);
+    Reg#(BData)     regCmd      <- mkReg(0);
         // Work register for the PC
     Reg#(BData)     regWorkPcLsb <- mkReg(0);
 
