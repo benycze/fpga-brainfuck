@@ -167,70 +167,71 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         let inst1Res = instMemPortARes.wget();
         let inst2Res = instMemPortBRes.wget();
 
-        if(!isValid(inst1Res) || !isValid(inst2Res))
-            $display("BCore: Some of passed data are not valid: ",inst1Res," and ",inst2Res);
+        if(!isValid(inst1Res) || !isValid(inst2Res)) $display("BCore: Not valid memory response in time ",$time);
 
-        // Unpack data from maybe    
-        let inst1 = fromMaybe(?,inst1Res);
-        let inst2 = fromMaybe(?,inst2Res);
+        if(isValid(inst1Res) && isValid(inst2Res))begin
+            // Unpack data from maybe    
+            let inst1 = fromMaybe(?,inst1Res);
+            let inst2 = fromMaybe(?,inst2Res);
 
-        // Make the read request for the current cell value (to prepare it
-        // for the next stage)
-        let cellAddr = regCell;
-        cellMemPortAReq.wset(makeBRAMRequest(False,regCell,0));
+            // Make the read request for the current cell value (to prepare it
+            // for the next stage)
+            let cellAddr = regCell;
+            cellMemPortAReq.wset(makeBRAMRequest(False,regCell,0));
 
-        // Both instructions should be valid, we pass the check and we can decode the instruction 
-        // now. 
-        let st3Dec = defaultValue;
-        // Star the decoding and setting of bit flags. This allows faster HW (1 bit comparator)
-        //  in the next stage but we will consume more bits.
-        if(!stage3Inv) begin
-            $display("BCore: Stage invalidation was asserted, keeping all default register values.");    
-        end else begin  
-            // Analyze the instrucion
-            let decInst = getInstruction(inst1);
-            case (decInst) matches
-                tagged I_Nop: begin 
-                    $display("BCore: No-operation was detected.");
-                end
-                tagged I_DataPtrInc: begin 
-                    $display("BCore: Data pointer increment");
-                    st3Dec.dataPtrInc = True;
-                end
-                tagged I_DataPtrDec: begin 
-                    $display("BCore: Data pointer decrement.");
-                    st3Dec.dataPtrDec = True;
-                end
-                tagged I_DataInc: begin 
-                    $display("BCore: Increment data.");
-                    st3Dec.dataInc = True;
-                end
-                tagged I_DataDec: begin 
-                    $display("BCore: Decrement data.");
-                    st3Dec.dataDec = True;
-                end
-                tagged I_SendOut: begin 
-                    $display("BCore: Send data to output.");
-                    st3Dec.takeOut = True;
-                end
-                tagged I_SaveIn: begin 
-                    $display("BCore: Take data from output.");
-                    st3Dec.takeIn = True;
-                end
-                tagged I_JmpEnd: begin 
-                    $display("BCore: Jump-end instruction.");
-                    st3Dec.jmpEnd = True;
-                end
-                tagged I_JmpBegin: begin 
-                    $display("BCore: Jump-begin instruction.");
-                    st3Dec.jmpBegin = True;
-                end
-                default : $display("BCore: Unknown instruction was detected.");
-            endcase
+            // Both instructions should be valid, we pass the check and we can decode the instruction 
+            // now. 
+            let st3Dec = defaultValue;
+            // Star the decoding and setting of bit flags. This allows faster HW (1 bit comparator)
+            //  in the next stage but we will consume more bits.
+            if(!stage3Inv) begin
+                $display("BCore: Stage invalidation was asserted, keeping all default register values.");    
+            end else begin  
+                // Analyze the instrucion
+                let decInst = getInstruction(inst1);
+                case (decInst) matches
+                    tagged I_Nop: begin 
+                        $display("BCore: No-operation was detected.");
+                    end
+                    tagged I_DataPtrInc: begin 
+                        $display("BCore: Data pointer increment");
+                        st3Dec.dataPtrInc = True;
+                    end
+                    tagged I_DataPtrDec: begin 
+                        $display("BCore: Data pointer decrement.");
+                        st3Dec.dataPtrDec = True;
+                    end
+                    tagged I_DataInc: begin 
+                        $display("BCore: Increment data.");
+                        st3Dec.dataInc = True;
+                    end
+                    tagged I_DataDec: begin 
+                        $display("BCore: Decrement data.");
+                        st3Dec.dataDec = True;
+                    end
+                    tagged I_SendOut: begin 
+                        $display("BCore: Send data to output.");
+                        st3Dec.takeOut = True;
+                    end
+                    tagged I_SaveIn: begin 
+                        $display("BCore: Take data from output.");
+                        st3Dec.takeIn = True;
+                    end
+                    tagged I_JmpEnd: begin 
+                        $display("BCore: Jump-end instruction.");
+                        st3Dec.jmpEnd = True;
+                    end
+                    tagged I_JmpBegin: begin 
+                        $display("BCore: Jump-begin instruction.");
+                        st3Dec.jmpBegin = True;
+                    end
+                    default : $display("BCore: Unknown instruction was detected.");
+                endcase
+            end
+
+            // Write data to the next stage
+            regDecCmd <= st3Dec;
         end
-
-        // Write data to the next stage
-        regDecCmd <= st3Dec;
         $display("BCore: instruction decode and operands in time ",$time);
     endrule
 
