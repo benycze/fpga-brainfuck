@@ -63,7 +63,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr),
     Arith#(typeData), 
 
-    // For the extend inside the execution_and_writeback == the sum of the data length and
+    // For the extend inside the execution_and_writeback rule == the sum of the data length and
     // parameter a__ (from the evaluation) has to be equal to the address length
     Add#(a__, n_typeData, n_typeAddr)
 );
