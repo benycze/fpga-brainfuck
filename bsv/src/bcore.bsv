@@ -60,7 +60,12 @@ endinterface
 //
 module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData)) provisos (
     Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData),
-    Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr)
+    Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr),
+    Arith#(typeData), 
+
+    // For the extend inside the execution_and_writeback == the sum of the data length and
+    // parameter a__ (from the evaluation) has to be equal to the address length
+    Add#(a__, n_typeData, n_typeAddr)
 );
 
     // ----------------------------------------------------
@@ -71,12 +76,16 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // Program counter (we need to address the whole BRAM address space)
     Reg#(typeAddr) regPc <- mkReg(0);
     // Cell pointer address (we need to address the whole BRAM address space)
-    Reg#(typeAddr) regCell <- mkReg(0);
+    Reg#(typeAddr)          regCell         <- mkReg(0);
+    Reg#(Maybe#(typeData))  regCellData     <- mkReg(tagged Invalid);  
     // Register which sets the invalid opcode flag
     Reg#(Bool) regInvalid <- mkReg(False);
     // FIFO with output data from the BCore
     FIFOF#(typeData) outDataFifo <- mkSizedFIFOF(inoutFifoSize);
     FIFOF#(typeData) inDataFifo  <- mkSizedFIFOF(inoutFifoSize);
+    RWire#(typeData) inDataWire     <- mkRWire;
+    RWire#(typeData) outDataWire    <- mkRWire;
+    Reg#(typeData)   st2JmpVal      <- mkRegU;
 
     // FIFO memories to read/write requests to BRAM
     RWire#(BRAMRequest#(typeAddr,typeData))  cellMemPortAReq <- mkRWire;
@@ -128,6 +137,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // the previous stage (we can do it just in the case that we have some instruction which needs to use the 
     // currenly written value but we will do it like that to have a simpler HW).
 
+    // Tell to the BSC compiler that pipeline rules can fire together in the same cycle
+    (* conflict_free = "instruction_fetch,instruction_decode_and_operands,execution_and_writeback" *)
+
     (* fire_when_enabled, no_implicit_conditions *)
     rule instruction_fetch;
         // In this stage, we have to read the address from the 
@@ -135,7 +147,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Prepare parallel values for stages
         let nonStage1Addr = regPc;
         let nonStage2Addr = regPc + 1;
-            // Prepare parralel values for non-stages
+            // Prepare parallel values for non-stages
         let stage1Addr = stage3Addr;
         let stage2Addr = stage3Addr + 1;
             // Invalidation of the processing (go back one instruction
@@ -168,7 +180,6 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         let inst2Res = instMemPortBRes.wget();
 
         if(!isValid(inst1Res) || !isValid(inst2Res)) $display("BCore: Not valid memory response in time ",$time);
-
         if(isValid(inst1Res) && isValid(inst2Res))begin
             // Unpack data from maybe    
             let inst1 = fromMaybe(?,inst1Res);
@@ -176,7 +187,6 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
             // Make the read request for the current cell value (to prepare it
             // for the next stage)
-            let cellAddr = regCell;
             cellMemPortAReq.wset(makeBRAMRequest(False,regCell,0));
 
             // Both instructions should be valid, we pass the check and we can decode the instruction 
@@ -231,6 +241,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
             // Write data to the next stage
             regDecCmd <= st3Dec;
+            st2JmpVal <= inst2;
         end
         $display("BCore: instruction decode and operands in time ",$time);
     endrule
@@ -238,8 +249,78 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     (* fire_when_enabled, no_implicit_conditions *)
     rule execution_and_writeback;
         // Get data from the previous stage
-        // Read data from the CELL
-        // Set the invalidation if any jump was detected
+        let decInst     = regDecCmd;
+        let tmpCellARes = cellMemPortARes.wget();
+        let tmpCellAddr = regCell;
+
+        // Check if we have a valid data in the register
+        // If yes, we will store data. If no, we will store
+        // data from the register.
+        let tmpCellAData = fromMaybe(0, tmpCellARes); // Default value
+        if(isValid(regCellData)) begin
+            // Unpack data from the maybe
+            tmpCellAData = fromMaybe(?, regCellData);
+        end
+
+        // We will invalidate data iff we are moving the pointer
+        // or we have a jump instruction. Any inc/dec operations are
+        // fine because we have a right data from temporal register
+        if(decInst.dataPtrInc || decInst.dataPtrDec || decInst.jmpEnd || decInst.jmpBegin) 
+            stage3Inv.send();
+
+        // Run actions -- we will have a lot of IF statements here
+
+            // Cell address - data are written to the BRAM iff we have detected the address change
+        if(decInst.dataPtrInc || decInst.dataPtrDec) cellMemPortBReq.wset(makeBRAMRequest(True, regCell, tmpCellAData));
+        if(decInst.dataPtrInc) tmpCellAddr = tmpCellAddr + 1;
+        if(decInst.dataPtrDec) tmpCellAddr = tmpCellAddr - 1;
+
+            // Cell value - we don't need to do any write-back to BRAM
+        if(decInst.dataInc) tmpCellAData = tmpCellAData + 1; 
+        if(decInst.dataDec) tmpCellAData = tmpCellAData - 1;
+                
+            // Input/output to/from the cell
+        if(decInst.takeIn && inDataFifo.notEmpty()) begin 
+            tmpCellAData = fromMaybe(0,inDataWire.wget());
+        end else begin
+            $display("BCore: Unable to read from the input FIFO. No data available in time ",$time);
+        end
+
+        if(decInst.takeOut && outDataFifo.notFull()) begin
+            outDataWire.wset(tmpCellAData);
+        end else begin
+            $display("Unable to write to the output FIFO. THe memory is full in time ",$time);
+        end
+
+            // Jumps - in this case we need to prepare the new address values (we have to count with the value
+            // in the first stage.
+            //
+            // Conver to bits, extend to the address and unpack
+        typeAddr jmpVal = unpack(extend(pack(st2JmpVal)));
+        let jmpAhead = regPc - 2 - jmpVal;
+        let jmpBack  = regPc - 2 + jmpVal;
+            // Ahead jump is the default one
+        let jmpSel = jmpAhead;
+        if(decInst.jmpBegin) jmpSel = jmpBack;
+            // Send data to the firs stage
+        stage3Addr <= jmpSel;
+        if(decInst.jmpBegin || decInst.jmpEnd) stage3AddrEn.send();
+
+        // Write-back to the registers
+        regCellData <= tagged Valid tmpCellAData;
+        regCell     <= tmpCellAddr;
+        $display("BCore: Write-back executed in time ",$time);
+    endrule
+
+    rule send_out_data (outDataWire.wget() matches tagged Valid .d);
+        // Write to the output FIFO
+        outDataFifo.enq(d);
+    endrule
+
+    rule save_in_data(inDataFifo.notEmpty());
+        // Take data from the input FIFO, store them into the 
+        inDataWire.wset(inDataFifo.first);
+        inDataFifo.deq();
     endrule
 
     // ----------------------------------------------------

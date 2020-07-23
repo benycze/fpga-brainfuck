@@ -34,7 +34,7 @@ Integer bitEnabled     = 0;
 Integer bitStepEnabled = 1;
 
 // Configuration of the BCore
-Integer bCoreInoutSize = 8;
+Integer bCoreInoutSize = 32;
 
 // Generate the address from given space and shift inside the space
 function BAddr getAddress(Bit#(2) space, Bit#(n) shiftInSpace) provisos(Add#(n, 2, BAddrWidth));
