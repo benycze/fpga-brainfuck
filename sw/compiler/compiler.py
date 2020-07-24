@@ -11,6 +11,7 @@
 import argparse
 import sys
 import pdb
+import lib.translate as translate
 
 def get_parser(args):
     """
