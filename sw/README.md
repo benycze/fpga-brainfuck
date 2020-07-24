@@ -165,3 +165,4 @@ Instructions are encoded like following (No = you can use any data, BCPU is igno
 
 The jump value is in bytes which are added/subtracted from the current PC (program counter) in the BCPU - jump is relative from the position in the source code. Each program
 starts from the address 0. The original [Brainfuck language](https://cs.wikipedia.org/wiki/Brainfuck) was extended with the ; symbol for *No operation* and line comment starting with // (like in C).
+Compiler source code is located in the `compiler` folder.
