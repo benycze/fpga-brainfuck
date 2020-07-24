@@ -140,8 +140,28 @@ Flag register structure:
 | 1                    | Input data FIFO is full                        |
 | 2                    | Output data FIFO is full                       |
 | 3                    | Invalid operation code has been detected       |
-| 4 - 7                | Reserved - set to 0                            | 
+| 4 - 7                | Reserved - set to 0                            |
 
 ## Compilation of the Brainfuck code
 
-TODO
+Processor is using a 16-bit instructions (to encode longer jumps) and memory access is done in byte order (due to the UART). I know that instructions are little bit longer but this is done becase of some future reserve (if we will be adding some instructions) and for encoding of jump instructions. Each instruction consits of:
+
+* 8 bits for instruction encoding & data (currently use for instructions only)
+* 8 bits for instruction data (currently for jumps)
+
+Instructions are encoded like following (No = you can use any data, BCPU is ignoring them):
+
+| Source code symbol| Opcode    |  Data                 |   Meaning                 |
+|:-----------------:|:---------:|-----------------------|---------------------------|
+| ; (extended)      |   0x0     | No                    | No operation
+| >                 |   0x1     | No                    | Increment ptr             |
+| <                 |   0x2     | No                    | Decrement ptr             |
+| +                 |   0x3     | No                    | Increment cell ptr        |
+| -                 |   0x4     | No                    | Decrement cell ptr        |
+| .                 |   0x5     | No                    | Send cell to output       |
+| ,                 |   0x6     | No                    | Store input to cell       |
+| [                 |   0x7     | Yes - jmp value (B)   | Cell == 0 -> jump to ]    |
+| ]                 |   0x8     | Yes - jmp value (B)   | Cell != 0 -> jump to [    |
+
+The jump value is in bytes which are added/subtracted from the current PC (program counter) in the BCPU - jump is relative from the position in the source code. Each program
+starts from the address 0. The original [Brainfuck language](https://cs.wikipedia.org/wiki/Brainfuck) was extended with the ; symbol for *No operation* and line comment starting with // (like in C).
