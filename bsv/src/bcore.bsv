@@ -72,8 +72,12 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // ----------------------------------------------------
     // Registers & folks
     // ----------------------------------------------------
-    // Unit enabled/disabled --- we can use wire here
+    // Unit enabled/disabled 
     Reg#(Bool) regCoreEnabled <- mkReg(False);
+    // Handling of data in/out waiting
+    Reg#(Bool) waitForInput   <- mkReg(False);
+    Reg#(Bool) waitForOutput  <- mkReg(False);
+    Bool waitForInout = waitForInput || waitForOutput;
     // Program counter (we need to address the whole BRAM address space)
     Reg#(typeAddr) regPc <- mkReg(0);
     // Cell pointer address (we need to address the whole BRAM address space)
@@ -142,7 +146,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     (* conflict_free = "instruction_fetch,instruction_decode_and_operands,execution_and_writeback" *)
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule instruction_fetch;
+    rule instruction_fetch (regCoreEnabled);
         // In this stage, we have to read the address from the 
         // register or we have to take the value from the stage 3.
             // Prepare parallel values for stages
@@ -169,13 +173,16 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         end
 
         // Increment the counter by 2 (instructions are 16 bit wide), we need to skip the 8-bit blocks
-        // with the shift value.
-        regPc <= regPc + 2; 
-        $display("BCore: instruction fetch in time ",$time);
+        // with the shift value. We don't want to change the program counter iff we are waiting for 
+        // the input/output processig
+        if(!waitForInout)begin
+            regPc <= regPc + 2; 
+            $display("BCore: instruction fetch in time ",$time);
+        end
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule instruction_decode_and_operands;
+    rule instruction_decode_and_operands (regCoreEnabled && !waitForInout);
         // Take the data from the BRAM
         let inst1Res = instMemPortARes.wget();
         let inst2Res = instMemPortBRes.wget();
@@ -223,10 +230,14 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                     tagged I_SendOut: begin 
                         $display("BCore: Send data to output.");
                         st3Dec.takeOut = True;
+                        // Stop processing if we cannot push to the output FIFO
+                        if(!outDataFifo.notEmpty()) waitForOutput <= True;
                     end
                     tagged I_SaveIn: begin 
                         $display("BCore: Take data from output.");
                         st3Dec.takeIn = True;
+                        //Stop processing if no input data are avaialble
+                        if(!inDataFifo.notFull()) waitForInput <= True;
                     end
                     tagged I_JmpEnd: begin 
                         $display("BCore: Jump-end instruction.");
@@ -248,7 +259,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule execution_and_writeback;
+    rule execution_and_writeback (regCoreEnabled && !waitForInout);
         // Get data from the previous stage
         let decInst     = regDecCmd;
         let tmpCellARes = cellMemPortARes.wget();
@@ -317,17 +328,31 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         $display("BCore: Write-back executed in time ",$time);
     endrule
 
-    rule send_out_data (outDataWire.wget() matches tagged Valid .d);
+    // Helping rules to send data out if we are not waiting for data.
+    //
+    // Used for both input/output 
+
+    rule send_out_data (outDataWire.wget() matches tagged Valid .d &&& !waitForInout);
         // Write to the output FIFO
         outDataFifo.enq(d);
     endrule
 
-    rule save_in_data(inDataFifo.notEmpty());
+    rule save_in_data(inDataFifo.notEmpty() && !waitForInout);
         // Take data from the input FIFO, store them into the 
         inDataWire.wset(inDataFifo.first);
         inDataFifo.deq();
     endrule
 
+    // Data inout unblocking rules -- these rules are runned when we are waiting and
+    // the "defuse" rule is met to unblock it
+    rule defuse_input_fifo(waitForInout && inDataFifo.notEmpty());
+        waitForInput <= False;
+    endrule
+
+    rule defuse_output_fifo(waitForInout && outDataFifo.notFull());
+        waitForOutput <= False;
+    endrule
+  
     // ----------------------------------------------------
     // Define methods & interfaces
     // ----------------------------------------------------
