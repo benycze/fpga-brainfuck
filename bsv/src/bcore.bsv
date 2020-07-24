@@ -61,7 +61,8 @@ endinterface
 module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData)) provisos (
     Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData),
     Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr),
-    Arith#(typeData), 
+    Arith#(typeData),  Eq#(typeData),
+
 
     // For the extend inside the execution_and_writeback rule == the sum of the data length and
     // parameter a__ (from the evaluation) has to be equal to the address length
@@ -275,7 +276,8 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         if(decInst.dataPtrInc) tmpCellAddr = tmpCellAddr + 1;
         if(decInst.dataPtrDec) tmpCellAddr = tmpCellAddr - 1;
 
-            // Cell value - we don't need to do any write-back to BRAM
+            // Cell value - we don't need to do any write-back to BRAM because we can remember the value and write it back
+            // int the case of the pointer update. 
         if(decInst.dataInc) tmpCellAData = tmpCellAData + 1; 
         if(decInst.dataDec) tmpCellAData = tmpCellAData - 1;
                 
@@ -295,16 +297,19 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Jumps - in this case we need to prepare the new address values (we have to count with the value
             // in the first stage.
             //
-            // Conver to bits, extend to the address and unpack
+            // Conver to bits, extend to the address and unpack. We have to send the address invalidation command
+            // to the first stage to work with the right instruction in the next clock cycle.
         typeAddr jmpVal = unpack(extend(pack(st2JmpVal)));
         let jmpAhead = regPc - 2 - jmpVal;
         let jmpBack  = regPc - 2 + jmpVal;
             // Ahead jump is the default one
-        let jmpSel = jmpAhead;
-        if(decInst.jmpBegin) jmpSel = jmpBack;
-            // Send data to the firs stage
-        stage3Addr <= jmpSel;
-        if(decInst.jmpBegin || decInst.jmpEnd) stage3AddrEn.send();
+        if(decInst.jmpEnd && (tmpCellAData == 0)) begin
+            let jmpSel = jmpAhead;
+            stage3AddrEn.send();
+        end else if(decInst.jmpBegin && (tmpCellAData != 0)) begin
+            stage3Addr <= jmpBack;
+            stage3AddrEn.send();
+        end
 
         // Write-back to the registers
         regCellData <= tagged Valid tmpCellAData;
