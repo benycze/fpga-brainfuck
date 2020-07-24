@@ -10,6 +10,7 @@
 
 import argparse
 import sys
+import os
 import pdb
 import lib.translate as translate
 
@@ -40,6 +41,21 @@ def main():
     Main entry function
     """
     args = get_parser(sys.argv) 
+    # Arguments parsed, check the validity
+    pdb.set_trace()
+    inf     = args.input[0]
+    debug   = args.debug
+    memory  = args.memory
+    output  = args.output
+
+    if not(os.path.exists(inf)):
+        print("Source file {} doesn't exists!".format(inf))
+    # Run the translation
+    try:
+        bt = translate.BTranslate(inf,debug,memory,output)
+        bt.translate()
+    except Exception as e:
+        print("Error detected during the translation: ",str(e))
 
 if __name__ == "__main__":
     main()
