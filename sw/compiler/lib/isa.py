@@ -34,4 +34,23 @@ class BIsa(objec):
         return (sym in BIsa.ISA_TABLE)
 
 
+    @staticmethod
+    def is_jump_instruction(sym):
+        """
+        Returns true iff we are working with the jump
+        instruction.
+        """
+        if sym in ["]","["]:
+            return True
 
+        return False
+
+    @staticmethod
+    def is_body_instruction(sym):
+        """
+        Returns true iff we are working with a body instructino
+        """
+        if sym in [";",">","<","+","-",".",","]:
+            return True
+            
+        return False

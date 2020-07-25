@@ -12,12 +12,6 @@ import pdb
 import readline
 import isa.BIsa as BIsa
 
-class BEof(Exception):
-    """
-    End of the Brainfuck code was detected
-    """
-    pass
-
 class BTranslationError(Exception):
     """
     Error during the translation was detected
@@ -73,7 +67,7 @@ class BTranslate(object):
 
         if len(self.line_buf) == 0:
             # Nothing else to read 
-            raise BEof()
+            return ''
         
         # Extract one character
         self.char_cnt = self.char_cnt + 1
@@ -105,9 +99,13 @@ class BTranslate(object):
         The symbol is stored inside the variable self.last_sym
         """
         while True:
-            # Skip white space, check if we are working with
-            # comment
+            # Chek if we are not done, skip white spaces
             char = self.__get_char()
+            if char == '':
+                # Nothing else to read
+                self.last_sym is ''
+                break
+
             if char.isspace():
                 continue         
 
@@ -124,7 +122,7 @@ class BTranslate(object):
                 raise BTranslationError("Uknown symbol was detected",self.line_cnt,self.char_cnt)          
 
             # Yahoo ... we can return the symbol which is possible to translate
-            if(self.debug):
+            if self.debug:
                 print("Lexer: Parser symbol => {}".format(char))
 
             self.last_sym = char
@@ -132,14 +130,70 @@ class BTranslate(object):
     def __translate_body(self):
         """
         Translate the body of the BCPU program
+
+        Returns: The translated code (human readable form)
         """
-        pass
+        # The body consits of non-jump instructions - if the instruction [ or ] is detected
+        # the following will happen:
+        # 1) The [ is translated as the pass to the __translate_cycle method
+        # 2) The ] is translated as the return from the method which means that the cycle
+        #    is being processed inside the __translate_cycle
+        #
+        inst_body = []        
+
+        # Get the symbol and analyze iff we are working with the JUMP instruction
+        while True:
+            self.__get_symbol()
+            if self.last_sym is '':
+                if self.debug:
+                    print("No other symbol to process, ending.")
+                break 
+
+            # Check if we are working with any jump symbol
+            if BIsa.is_jump_instruction(self.last_sym):
+                return self.__translate_cycle()
+
+            # Check if we are working with a body instruction, we will return 
+            # the error if not
+            if not(BIsa.is_body_instruction(self.last_sym)):
+                raise BTranslationError("Unknown symbols {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
+
+            # So far so good, add it into the list and try next symbol
+            inst_body.append(self.last_sym)
+        # We are out ... time to dump our code
+        #TODO: Implement this functionality, return the translated body here
 
     def __translate_cycle(self):
         """
         Translate the BCPU cycle construction
+
+        Returns: The translated code (human readable form)
         """
-        pass
+        # The translate cycle should detect the opening symbol [ and 
+        # closing symbol ]
+        # Fine ... check if we have an opening symbol
+        if not(self.last_sym is '['):
+            raise BTranslationError("Cycle opening [ not found, detected {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
+
+        # Translate the body
+        body_code = self.__translate_body()
+
+        # Check if we have a closing symbol
+        self.__get_symbol()
+        if not(self.last_sym is ']'):
+            raise BTranslationError("Cycle closing ] not found, detected {}.".format(self.last_sym), self.line_cnt, self.char_cnt) 
+
+        # We are done ... everything is fine. Time to dump our functionality
+        # TODO: Return the translated body here
+        return None
+
+    def __memory_map_to_bin(self, mem_map):
+        """
+        Covert the memroy map to a binary form.
+
+        Return: Byte form of the file uploaded to the BCPU
+        """
+        return None
 
     def translate(self):
         """
@@ -147,9 +201,31 @@ class BTranslate(object):
         """
         try:
             # Open the file and process the input body
+            # 
+            # The program is firstly parsed and constructed to the tree 
+            # where the program body is stored inside the list. After we process the whole
+            # program we dump the body of the program as the as the last step of each function
+            # because what we need is to resolve jump vaues (which are known after the translation.
+            #
+            # That is the plan - let's rock!!
+
             self.inf = open(self.in_file,'r')
             while True:
-                self.__translate_body()
+                # Get the memory map and covert it to the binary form
+                mem_map = self.__translate_body()
+                # Write the memory map if it is required
+                if self.memory_map:
+                    print("Dumping the memory map to file {}".format(self.memory_map_name))
+                    mem_map_file = open(self.memory_map_name,'w')
+                    mem_map_file.write(mem_map)
+                    mem_map_file.close()
+
+                # Convert the memory map (human readable to the binary form)
+                bin_form = self.__memory_map_to_bin(mem_map)
+                out_file = open(self.outfile,'w')
+                out_file.write(bin_form)
+                out_file.close()
+                print("Dumping the binary code for the BCPU.")
 
         except IOError as e:
             print("Error during the file reading/writing operation.")
