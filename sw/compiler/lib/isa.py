@@ -9,9 +9,9 @@
 # -------------------------------------------------------------------------------
 
 class BIsa(objec):
-    """"
+    """
     Object with better work with BCPU ISA
-    """"
+    """
 
     # Table for the supported isa codes
     ISA_TABLE = {
@@ -32,4 +32,6 @@ class BIsa(objec):
         Returns true iff the symbol is translatable
         """
         return (sym in BIsa.ISA_TABLE)
+
+
 
