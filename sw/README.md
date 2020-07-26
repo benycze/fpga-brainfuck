@@ -171,3 +171,25 @@ and line comment starting with // (like in C). Compiler source code is located i
 
 We are not interested about the real value of the PC during the program termination. The BCPU program is terminated in the last pipeline stage and therefore you have to decrement the
 PC value by 2 during the debugging.
+
+The translated program can be uploaded to the BCPU using the `upload-program.py` tool - use the `--help` to obtain more information.
+
+## How to Compile and Upload the Code
+
+The translation can be done like following:
+
+```bash
+cd compiler
+./compiler --help # To obtain more detailed info
+./compiler.py --memory file.b
+```
+
+The compiler generates a binary form of the code which can be then uploaded to the BCPU. You can also get a memory map
+in the [mif](https://www.intel.com/content/www/us/en/programmable/quartushelp/13.0/mergedProjects/reference/glossary/def_mif.htm) format which can be used in Quartus for the memory inilization (and also in Bluespec simulation). We can start the program uploading - you can also erase the memmory but this operation is slow for now (it is not required but it is fine to do it before debugging):
+
+```bash
+./upload-program.py --help # To obtain more detailed info
+./upload-program.py --erase compiler/a.out
+```
+
+The program is now uploaded into the instruction memory and you can fire the processing.
