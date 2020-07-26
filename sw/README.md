@@ -140,7 +140,8 @@ Flag register structure:
 | 1                    | Input data FIFO is full                        |
 | 2                    | Output data FIFO is full                       |
 | 3                    | Invalid operation code has been detected       |
-| 4 - 7                | Reserved - set to 0                            |
+| 4                    | Program is terminated                          |
+| 5 - 7                | Reserved - set to 0                            |
 
 ## Compilation of the Brainfuck code
 
@@ -151,18 +152,22 @@ Processor is using a 16-bit instructions (to encode longer jumps) and memory acc
 
 Instructions are encoded like following (No = you can use any data, BCPU is ignoring them):
 
-| Source code symbol| Opcode    |  Data                 |   Meaning                 |
-|:-----------------:|:---------:|-----------------------|---------------------------|
-| ; (extended)      |   0x0     | No                    | No operation
-| >                 |   0x1     | No                    | Increment ptr             |
-| <                 |   0x2     | No                    | Decrement ptr             |
-| +                 |   0x3     | No                    | Increment cell ptr        |
-| -                 |   0x4     | No                    | Decrement cell ptr        |
-| .                 |   0x5     | No                    | Send cell to output       |
-| ,                 |   0x6     | No                    | Store input to cell       |
-| [                 |   0x7     | Yes - jmp value (B)   | Cell == 0 -> jump to ]    |
-| ]                 |   0x8     | Yes - jmp value (B)   | Cell != 0 -> jump to [    |
+| Source code symbol| Opcode    |  Data                 |   Meaning                                                 |
+|:-----------------:|:---------:|-----------------------|-----------------------------------------------------------|
+| ; (extended)      |   0x0     | No                    | No operation                                              |
+| >                 |   0x1     | No                    | Increment ptr                                             |
+| <                 |   0x2     | No                    | Decrement ptr                                             |
+| +                 |   0x3     | No                    | Increment cell ptr                                        |
+| -                 |   0x4     | No                    | Decrement cell ptr                                        |
+| .                 |   0x5     | No                    | Send cell to output                                       |
+| ,                 |   0x6     | No                    | Store input to cell                                       |
+| [                 |   0x7     | Yes - jmp value (B)   | Cell == 0 -> jump to ]                                    |
+| ]                 |   0x8     | Yes - jmp value (B)   | Cell != 0 -> jump to [                                    |
+| x (extended)      |   0x9     | No                    | Program termination (BCPU stops the operation)            |
 
 The jump value is in bytes which are added/subtracted from the current PC (program counter) in the BCPU - jump is relative from the position in the source code. Each program
-starts from the address 0. The original [Brainfuck language](https://cs.wikipedia.org/wiki/Brainfuck) was extended with the ; symbol for *No operation* and line comment starting with // (like in C).
-Compiler source code is located in the `compiler` folder.
+starts from the address 0. The original [Brainfuck language](https://cs.wikipedia.org/wiki/Brainfuck) was extended with the _;_ symbol for *No operation*, _x_ for the program termination
+and line comment starting with // (like in C). Compiler source code is located in the `compiler` folder.
+
+We are not interested about the real value of the PC during the program termination. The BCPU program is terminated in the last pipeline stage and therefore you have to decrement the
+PC value by 2 during the debugging.

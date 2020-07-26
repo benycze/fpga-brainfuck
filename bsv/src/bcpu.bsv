@@ -220,6 +220,7 @@ module mkBCpu(BCpu_IFC);
                 // Prepare data there & send them
                 let pcVal    = bCore.getPC();
                 let flagData = {'0, 
+                    pack(bCore.getTermination()),
                     pack(bCore.getInvalidOpcode()),
                     pack(bCore.outputDataFull()),
                     pack(bCore.inputDataFull()),

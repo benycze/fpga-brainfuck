@@ -34,6 +34,7 @@ package binst;
         void    I_SaveIn;       // Save the input to current cell - ","
         void    I_JmpEnd;       // Move the pointer to the corresponding ] - "["
         void    I_JmpBegin;     // Move the poiter to the correspodnig [ - "]"
+        void    I_Terminate;    // Program termination - stop the operation
     } BInst deriving (Bits,Eq,FShow);
 
     // Number of supported instructions
@@ -62,18 +63,20 @@ package binst;
         Bool takeOut;
         Bool jmpEnd;
         Bool jmpBegin;
+        Bool prgTerminated;
     } RegCmdSt deriving (Bits,FShow);
 
     instance DefaultValue #(RegCmdSt);
         defaultValue = RegCmdSt{
-            dataPtrInc  : False, 
-            dataPtrDec  : False,
-            dataInc     : False,
-            dataDec     : False,
-            takeIn      : False,
-            takeOut     : False,
-            jmpEnd      : False,
-            jmpBegin    : False
+            dataPtrInc      : False, 
+            dataPtrDec      : False,
+            dataInc         : False,
+            dataDec         : False,
+            takeIn          : False,
+            takeOut         : False,
+            jmpEnd          : False,
+            jmpBegin        : False,
+            prgTerminated   : False
         };
     endinstance
 

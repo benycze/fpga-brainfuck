@@ -52,6 +52,10 @@ interface BCore_IFC#(type typeAddr, type typeData);
     // Invalid opcode detected
     method Bool getInvalidOpcode();
 
+    // BCPU stops the operation due to the program temination.
+    // This flag is reseted after we fire the setEnabled method
+    method Bool getTermination();
+
 endinterface
 
 // The BCPU core code which implements the processing of the Brainfuck code.
@@ -73,7 +77,8 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // Registers & folks
     // ----------------------------------------------------
     // Unit enabled/disabled 
-    Reg#(Bool) regCoreEnabled <- mkReg(False);
+    Reg#(Bool) regCoreEnabled       <- mkReg(False);
+    Reg#(Bool) regProgTerminated    <- mkReg(False);
     // Handling of data in/out waiting
     Reg#(Bool) waitForInput   <- mkReg(False);
     Reg#(Bool) waitForOutput  <- mkReg(False);
@@ -146,7 +151,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     (* conflict_free = "instruction_fetch,instruction_decode_and_operands,execution_and_writeback" *)
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule instruction_fetch (regCoreEnabled);
+    rule instruction_fetch (regCoreEnabled && !regProgTerminated);
         // In this stage, we have to read the address from the 
         // register or we have to take the value from the stage 3.
             // Prepare parallel values for stages
@@ -182,7 +187,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule instruction_decode_and_operands (regCoreEnabled && !waitForInout);
+    rule instruction_decode_and_operands (regCoreEnabled && !waitForInout && !regProgTerminated);
         // Take the data from the BRAM
         let inst1Res = instMemPortARes.wget();
         let inst2Res = instMemPortBRes.wget();
@@ -247,6 +252,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                         $display("BCore: Jump-begin instruction.");
                         st3Dec.jmpBegin = True;
                     end
+                    tagged I_Terminate: begin
+                        $display("BCore: Program termination was detected.");
+                        st3Dec.prgTerminated = True;
+                    end 
                     default : $display("BCore: Unknown instruction was detected.");
                 endcase
             end
@@ -259,11 +268,11 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule execution_and_writeback (regCoreEnabled && !waitForInout);
+    rule execution_and_writeback (regCoreEnabled && !waitForInout && !regProgTerminated);
         // Get data from the previous stage
         let decInst     = regDecCmd;
         let tmpCellARes = cellMemPortARes.wget();
-        let tmpCellAddr = regCell;
+        let tmpCellAddr = regCell; 
 
         // Check if we have a valid data in the register
         // If yes, we will store data. If no, we will store
@@ -325,6 +334,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // Write-back to the registers
         regCellData <= tagged Valid tmpCellAData;
         regCell     <= tmpCellAddr;
+
+        // Terminate the program
+        regProgTerminated <= decInst.prgTerminated;
         $display("BCore: Write-back executed in time ",$time);
     endrule
 
@@ -358,7 +370,8 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // ----------------------------------------------------
 
     method Action setEnabled(Bool enabled);
-        regCoreEnabled <= enabled;
+        regCoreEnabled      <= enabled;
+        regProgTerminated   <= False;
     endmethod
 
     method typeAddr getPC();
@@ -403,6 +416,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
     method Bool getInvalidOpcode();
         return regInvalid;
+    endmethod
+
+    method Bool getTermination();
+        return regProgTerminated;
     endmethod
     
 endmodule : mkBCore
