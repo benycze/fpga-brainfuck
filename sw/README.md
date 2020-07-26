@@ -174,7 +174,7 @@ PC value by 2 during the debugging.
 
 The translated program can be uploaded to the BCPU using the `upload-program.py` tool - use the `--help` to obtain more information.
 
-## How to Compile and Upload the Code
+## How to compile and upload the code
 
 The translation can be done like following:
 
