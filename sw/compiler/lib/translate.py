@@ -10,6 +10,7 @@
 
 import pdb
 import readline
+import StringIO
 import isa.BIsa as BIsa
 
 class BTranslationError(Exception):
@@ -45,7 +46,7 @@ class BTranslate(object):
         self.debug      = debug
         self.memory_map = memory_map
         self.outfile    = outfile
-        self.memory_map_name = "map-" + outfile + ".bin"
+        self.memory_map_name = "map-" + outfile + ".mif"
         # Helping variables - source code parsing
         self.line_buf   = ''
         self.line_cnt   = 0
@@ -131,7 +132,7 @@ class BTranslate(object):
         """
         Translate the body of the BCPU program
 
-        Returns: The translated code (human readable form)
+        Returns: The translated code (human readable form - tuple (instruction,address)
         """
         # The body consits of non-jump instructions - if the instruction [ or ] is detected
         # the following will happen:
@@ -159,24 +160,32 @@ class BTranslate(object):
                 raise BTranslationError("Unknown symbols {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
 
             # So far so good, add it into the list and try next symbol
-            inst_body.append(self.last_sym)
+            inst_body.append((self.last_sym,0), self.mem_pos)
+            self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
         # We are out ... time to dump our code
-        #TODO: Implement this functionality, return the translated body here
+        return inst_body
 
     def __translate_cycle(self):
         """
         Translate the BCPU cycle construction
 
-        Returns: The translated code (human readable form)
+        Returns: The translated code (human readable form) - tuple ((jump_instr,val),address)
         """
+        inst_body = []
+
         # The translate cycle should detect the opening symbol [ and 
         # closing symbol ]
         # Fine ... check if we have an opening symbol
         if not(self.last_sym is '['):
             raise BTranslationError("Cycle opening [ not found, detected {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
 
-        # Translate the body
+        # Remember the first address, translate the body, remember the return address and construct
+        # the jump instruction
+        bAddress = self.mem_pos
+        self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
         body_code = self.__translate_body()
+        eAddress = self.mem_pos
+        self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
 
         # Check if we have a closing symbol
         self.__get_symbol()
@@ -184,8 +193,19 @@ class BTranslate(object):
             raise BTranslationError("Cycle closing ] not found, detected {}.".format(self.last_sym), self.line_cnt, self.char_cnt) 
 
         # We are done ... everything is fine. Time to dump our functionality
-        # TODO: Return the translated body here
-        return None
+            # Front jump -- we need to jump to the next address behind the ]
+            # Back jump -- we need to jimp the address which is relatively from the ], following the ]
+        fJumpOffset = eAddress - bAddress + BIsa.INST_WIDTH
+        bJumpOffset = eAddress - bAddress - BIsa.INST_WIDTH
+
+        # Generate the [
+        fJump = ("[",fJumpOffset)
+        inst_body.append(fJump)
+        # Append body to the list
+        inst_body.extend(body_code)
+        # Generate the ]
+        bJump = ("]",bJumpOffset)
+        inst_body.append(bJump)
 
     def __memory_map_to_bin(self, mem_map):
         """
@@ -193,7 +213,62 @@ class BTranslate(object):
 
         Return: Byte form of the file uploaded to the BCPU
         """
-        return None
+        if(self.debug):
+            print("Dumping the memory map to its binary form")
+
+        ret = bytearray()
+        for m_elem,_ in mem_map:
+            # Check if we are working with symbol or 
+            # jump instruction. Each instruction is encoded as (inst, addr),
+            # where inst can be a symbol or jump tuple (jmp,val)
+            bF = None
+            if BIsa.is_jump_instruction(m_elem[0])
+                bF = BIsa.translate_jump(*m_elem)
+            else:
+                bF = BIsa.translate_inst(m_elem[0])
+            
+            # Append the result of the conversion
+            ret.append(bF)
+
+        return ret
+
+    def __dump_mem_map(self,mem_map):
+        """
+        Store the memory map into the file. The format of the 
+        file is MIF (https://www.intel.com/content/www/us/en/programmable/quartushelp/13.0/mergedProjects/reference/glossary/def_mif.htm)
+        """
+        ret = """
+        DEPTH = {}; -- The size of memory in words
+        WIDTH = {}; -- The size of data in bits
+        ADDRESS_RADIX = HEX;          -- The radix for address values
+        DATA_RADIX = HEX;             -- The radix for data values
+        CONTENT                       -- start of (address : data pairs)
+        BEGIN
+        """.format(len(mem_map),8)
+
+        # Dump the memory layout
+        for m_elem,addr in mem_map:
+            # Prepare data - m_elem is not a tuple iff we are not working
+            # with a jump instruction
+            bData   = 0
+            sym     = m_elem[0]
+            if BIsa.is_jump_instruction(sym)
+                # It is a jump instruction
+                bData = BIsa.translate_jump(*m_elem)
+            else:
+                # It is an instruction
+                bData = BIsa.translate_inst(sym)
+
+            # Each line starts with a comment, after that we need to dump 
+            # address : data
+            ret += "-- Translated instruction ==> {}".format(sym)
+            ret += "{:x} : {:x};".format(addr,bData[0])
+            ret += "{:x} : {:x};".format(addr+1,bData[1])
+
+        # End the file 
+        ret += "END;"
+        return ret
+
 
     def translate(self):
         """
@@ -212,16 +287,17 @@ class BTranslate(object):
             self.inf = open(self.in_file,'r')
             while True:
                 # Get the memory map and covert it to the binary form
-                mem_map = self.__translate_body()
+                bprogram = self.__translate_body()
                 # Write the memory map if it is required
                 if self.memory_map:
                     print("Dumping the memory map to file {}".format(self.memory_map_name))
+                    mem_map_content = self.__dump_mem_map(bprogram)
                     mem_map_file = open(self.memory_map_name,'w')
-                    mem_map_file.write(mem_map)
+                    mem_map_file.write(mem_map_content)
                     mem_map_file.close()
 
                 # Convert the memory map (human readable to the binary form)
-                bin_form = self.__memory_map_to_bin(mem_map)
+                bin_form = self.__memory_map_to_bin(bprogram)
                 out_file = open(self.outfile,'wb')
                 out_file.write(bin_form)
                 out_file.close()
@@ -229,11 +305,10 @@ class BTranslate(object):
 
         except IOError as e:
             print("Error during the file reading/writing operation.")
-        except BEof as e:
-            if self.debug:
-                print("Parsing done!")
         except BTranslationError as e:
             print(str(e))
         finally:
              # Close the file
             self.inf.close()
+
+        print("Translation done!")
