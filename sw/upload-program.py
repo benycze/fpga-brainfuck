@@ -89,7 +89,7 @@ def erase(dev,top_addr):
     proc = None
     while addr <= top_addr:
         # Write the address and inform the user
-        dev.write(addr,b'0')
+        dev.write(addr,b'\x00')
         proc = print_proc(addr,top_addr,proc)
         addr = addr + 1
 
