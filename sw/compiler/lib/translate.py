@@ -219,9 +219,14 @@ class BTranslate(object):
         fJumpOffset = eAddress - bAddress + BIsa.INST_WIDTH
         bJumpOffset = eAddress - bAddress - BIsa.INST_WIDTH
 
+        if self.debug:
+            print("fJump \"[\" value is 0x{:x}".format(fJumpOffset))
+            print("bJump \"]\" value is 0x{:x}".format(bJumpOffset))
+
         # Check that offsets are no longer than 255 bytes
-        if fJumpOffset > 255 or bJumpOffset > 255:
-            raise BTranslationError("Jump is longer than 256 bytes",self.line_cnt,self.char_cnt)
+        max_jmp = 2 ** 12 - 1
+        if fJumpOffset > max_jmp  or bJumpOffset > max_jmp:
+            raise BTranslationError("Jump is longer than {} B.".format(max_jmp), self.line_cnt, self.char_cnt)
 
         # Generate the [
         fJump = (("[",fJumpOffset), bAddress)
@@ -291,7 +296,8 @@ BEGIN\n
 
             # Each line starts with a comment, after that we need to dump 
             # address : data
-            ret += "-- Translated instruction ==> {}\n".format(sym)
+            i_arg = BIsa.get_instruction_argument(bData) # Try to decode it back
+            ret += "-- Translated instruction ==> {} (parameter = 0x{} )\n".format(sym,i_arg)
             ret += "{:x} : {:x};\n".format(addr,bData[0])
             ret += "{:x} : {:x};\n".format(addr+1,bData[1])
 

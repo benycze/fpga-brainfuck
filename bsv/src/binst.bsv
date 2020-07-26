@@ -22,25 +22,29 @@ package binst;
     //
     // This can be also implemented using the enum :-).
     //
-    // Opcodes are assigned from 0 to N-1, where N is the number of instructions
+    // Opcodes are assigned from 0 to N-1, where N is the number of instructions.
+    // Width is 16 bits in total.
 
     typedef union tagged {
-        void    I_Nop;          // No-operation - added to the instruction set
-        void    I_DataPtrInc;   // Increment of data pointer - ">"
-        void    I_DataPtrDec;   // Decrement of data pointer - "<"
-        void    I_DataInc;      // Increment the value pointed by the pointer - "+"
-        void    I_DataDec;      // Decrement the value pointed by the pointer - "-"
-        void    I_SendOut;      // Send the current cel to the output - "."
-        void    I_SaveIn;       // Save the input to current cell - ","
-        void    I_JmpEnd;       // Move the pointer to the corresponding ] - "["
-        void    I_JmpBegin;     // Move the poiter to the correspodnig [ - "]"
-        void    I_Terminate;    // Program termination - stop the operation
+        void    I_Nop;                  // No-operation - added to the instruction set
+        void    I_DataPtrInc;           // Increment of data pointer - ">"
+        void    I_DataPtrDec;           // Decrement of data pointer - "<"
+        void    I_DataInc;              // Increment the value pointed by the pointer - "+"
+        void    I_DataDec;              // Decrement the value pointed by the pointer - "-"
+        void    I_SendOut;              // Send the current cel to the output - "."
+        void    I_SaveIn;               // Save the input to current cell - ","
+        struct  { Bit#(12) jmpVal; } I_JmpEnd;   // Move the pointer to the corresponding ] - "["    
+        struct  { Bit#(12) jmpVal; } I_JmpBegin; // Move the poiter to the correspodnig [ - "]"
+        void    I_Terminate;            // Program termination - stop the operation
     } BInst deriving (Bits,Eq,FShow);
 
     // Number of supported instructions
-    typedef 9 BInstCount;
+    typedef 10 BInstCount;
 
-    // For more comfortable work, we will implement a unpack functions from BData (8-bit) 
+    // Instruction width
+    typedef 16 BInstWidth;
+
+    // For more comfortable work, we will implement a unpack functions from BInst (8-bit) 
     // to the BInst values (less than 8 bits). The BData is the elementary unit of data which 
     // are used for the operation inside the processor.
     function BInst getInstruction(td data) provisos (
@@ -55,15 +59,16 @@ package binst;
     // Helping structure which holds the de-coded instruction and helps us
     // to work with a bit flags in the next processing
     typedef struct {
-        Bool dataPtrInc;
-        Bool dataPtrDec;
-        Bool dataInc;
-        Bool dataDec;
-        Bool takeIn;
-        Bool takeOut;
-        Bool jmpEnd;
-        Bool jmpBegin;
-        Bool prgTerminated;
+        Bool        dataPtrInc;
+        Bool        dataPtrDec;
+        Bool        dataInc;
+        Bool        dataDec;
+        Bool        takeIn;
+        Bool        takeOut;
+        Bool        jmpEnd;
+        Bit#(12)    jmpVal;
+        Bool        jmpBegin;
+        Bool        prgTerminated;
     } RegCmdSt deriving (Bits,FShow);
 
     instance DefaultValue #(RegCmdSt);
@@ -76,6 +81,7 @@ package binst;
             takeOut         : False,
             jmpEnd          : False,
             jmpBegin        : False,
+            jmpVal          : 0,
             prgTerminated   : False
         };
     endinstance

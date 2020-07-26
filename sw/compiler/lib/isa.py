@@ -8,6 +8,8 @@
 #  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 # -------------------------------------------------------------------------------
 
+import pdb
+
 class BIsa(object):
     """
     Object with better work with BCPU ISA
@@ -17,17 +19,19 @@ class BIsa(object):
     INST_WIDTH = 2
 
     # Table for the supported isa codes
+    # The 12 bit shift is because of the jump value
+    # instruction
     ISA_TABLE = {
-        ";" : 0x0,
-        ">" : 0x1, 
-        "<" : 0x2, 
-        "+" : 0x3, 
-        "-" : 0x4, 
-        "." : 0x5, 
-        "," : 0x6, 
-        "[" : 0x7, 
-        "]" : 0x8,
-        "x" : 0x9,  
+        ";" : (0x0) << 12,      # 0x0000
+        ">" : (0x1) << 12,      # 0x1000
+        "<" : (0x2) << 12,      # 0x2000
+        "+" : (0x3) << 12,      # 0x3000
+        "-" : (0x4) << 12,      # 0x4000
+        "." : (0x5) << 12,      # 0x5000
+        "," : (0x6) << 12,      # 0x6000
+        "[" : (0x7) << 12,      # 0x7000
+        "]" : (0x8) << 12,      # 0x8000
+        "x" : (0x9) << 12,      # 0x9000
     }
 
     @staticmethod
@@ -74,6 +78,14 @@ class BIsa(object):
         return False
 
     @staticmethod
+    def __dump_to_bytes(val):
+        """
+        Dump the passed value to 2 byte array
+        """
+        ret = (val).to_bytes(2,byteorder='big')
+        return ret
+
+    @staticmethod
     def translate_inst(sym):
         """
         Translate the non-jump instruction
@@ -82,7 +94,8 @@ class BIsa(object):
         if not(BIsa.is_body_instruction(sym)):
             raise ValueError("Invalid body instruction - {} was received".foramt(sym))
         # Return the translated instruction
-        return bytearray([BIsa.ISA_TABLE[sym],0])
+        inst = BIsa.ISA_TABLE[sym]
+        return BIsa.__dump_to_bytes(inst)
 
     @staticmethod
     def translate_jump(sym,val):
@@ -95,7 +108,17 @@ class BIsa(object):
             raise ValueError("Invalid jump instruction - {} was received.".format(sym))
 
         # The jump value is one byte
-        if val < 0 or val > 255:
+        if val < 0 or val > (2**12 - 1):
             raise ValueError("Bad jump value insturction")
-        # Return the translated instruction
-        return bytearray([BIsa.ISA_TABLE[sym],val])
+        
+        # Prepare the jump - convert to bytes
+        inst = BIsa.ISA_TABLE[sym] | val
+        return BIsa.__dump_to_bytes(inst)
+
+    @staticmethod
+    def get_instruction_argument(inst):
+        """
+        Return the argument value 
+        """
+        val = ((inst[0] & 0x0f) << 8)  | inst [1] 
+        return val

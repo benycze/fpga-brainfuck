@@ -65,12 +65,11 @@ endinterface
 module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData)) provisos (
     Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData),
     Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr),
-    Arith#(typeData),  Eq#(typeData),
-
-
+    Arith#(typeData),  Eq#(typeData), 
     // For the extend inside the execution_and_writeback rule == the sum of the data length and
-    // parameter a__ (from the evaluation) has to be equal to the address length
-    Add#(a__, n_typeData, n_typeAddr)
+    // parameter a__ (from the evaluation) has to be equal to the address length. 12 bit is the 
+    // length of the jump value
+    Add#(0,n_typeData,BDataWidth), Add#(a__, 12, n_typeAddr)
 );
 
     // ----------------------------------------------------
@@ -95,7 +94,6 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     FIFOF#(typeData) inDataFifo  <- mkSizedFIFOF(inoutFifoSize);
     RWire#(typeData) inDataWire     <- mkRWire;
     RWire#(typeData) outDataWire    <- mkRWire;
-    Reg#(typeData)   st2JmpVal      <- mkRegU;
 
     // FIFO memories to read/write requests to BRAM
     RWire#(BRAMRequest#(typeAddr,typeData))  cellMemPortAReq <- mkRWire;
@@ -206,12 +204,13 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // now. 
             let st3Dec = defaultValue;
             // Star the decoding and setting of bit flags. This allows faster HW (1 bit comparator)
-            //  in the next stage but we will consume more bits.
+            //  in the next stage but we will consume more bits.  
+            BInst instruction = unpack({pack(inst1), pack(inst2)});
             if(!stage3Inv) begin
                 $display("BCore: Stage invalidation was asserted, keeping all default register values.");    
             end else begin  
                 // Analyze the instrucion
-                let decInst = getInstruction(inst1);
+                let decInst = getInstruction(instruction);
                 case (decInst) matches
                     tagged I_Nop: begin 
                         $display("BCore: No-operation was detected.");
@@ -244,13 +243,15 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                         //Stop processing if no input data are avaialble
                         if(!inDataFifo.notFull()) waitForInput <= True;
                     end
-                    tagged I_JmpEnd: begin 
+                    tagged I_JmpEnd { jmpVal : .jmpVal1 } : begin 
                         $display("BCore: Jump-end instruction.");
                         st3Dec.jmpEnd = True;
+                        st3Dec.jmpVal = jmpVal1;
                     end
-                    tagged I_JmpBegin: begin 
+                    tagged I_JmpBegin { jmpVal : .jmpVal1 } : begin 
                         $display("BCore: Jump-begin instruction.");
                         st3Dec.jmpBegin = True;
+                        st3Dec.jmpVal   = jmpVal1;
                     end
                     tagged I_Terminate: begin
                         $display("BCore: Program termination was detected.");
@@ -262,7 +263,6 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
             // Write data to the next stage
             regDecCmd <= st3Dec;
-            st2JmpVal <= inst2;
         end
         $display("BCore: instruction decode and operands in time ",$time);
     endrule
@@ -319,7 +319,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             //
             // Conver to bits, extend to the address and unpack. We have to send the address invalidation command
             // to the first stage to work with the right instruction in the next clock cycle.
-        typeAddr jmpVal = unpack(extend(pack(st2JmpVal)));
+        typeAddr jmpVal = unpack(extend(pack(decInst.jmpVal)));
         let jmpAhead = regPc - 2 - jmpVal;
         let jmpBack  = regPc - 2 + jmpVal;
             // Ahead jump is the default one

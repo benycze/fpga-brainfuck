@@ -147,7 +147,7 @@ Flag register structure:
 
 Processor is using a 16-bit instructions (to encode longer jumps) and memory access is done in byte order (due to the UART). I know that instructions are little bit longer but this is done becase of some future reserve (if we will be adding some instructions) and for encoding of jump instructions. Each instruction consits of:
 
-* 8 bits for instruction encoding & data (currently use for instructions only)
+* 8 bits for instruction encoding & data (currently use for instructions only) - instruction is encoded in 4 MSB bits
 * 8 bits for instruction data (currently for jumps)
 
 Instructions are encoded like following (No = you can use any data, BCPU is ignoring them):
