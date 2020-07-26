@@ -222,7 +222,7 @@ class BTranslate(object):
 
                 # Convert the memory map (human readable to the binary form)
                 bin_form = self.__memory_map_to_bin(mem_map)
-                out_file = open(self.outfile,'w')
+                out_file = open(self.outfile,'wb')
                 out_file.write(bin_form)
                 out_file.close()
                 print("Dumping the binary code for the BCPU.")
