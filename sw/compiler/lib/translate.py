@@ -165,7 +165,7 @@ class BTranslate(object):
             if BIsa.is_bjump(self.last_sym):
                 cycle_body = self.__translate_cycle()
                 inst_body.extend(cycle_body)
-                break
+                continue
 
             if BIsa.is_ejump(self.last_sym):
                 # We have a closing parenthesis inside the body, end the processing there and return

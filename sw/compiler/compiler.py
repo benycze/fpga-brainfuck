@@ -45,7 +45,7 @@ def main():
     inf     = args.input[0]
     debug   = args.debug
     memory  = args.memory
-    output  = args.output
+    output  = args.output[0]
 
     if not(os.path.exists(inf)):
         print("Source file {} doesn't exists!".format(inf))
