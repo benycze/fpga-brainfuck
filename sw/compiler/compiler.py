@@ -29,8 +29,8 @@ def get_parser(args):
     'the BCPU'.format(prgname),formatter_class=argparse.RawTextHelpFormatter)
 
     # Remember the conversion function if you want to write integers as 0x or just like a literal
-    parser.add_argument('--debug',type=bool,help='Generate debug information',default=False)
-    parser.add_argument("--memory",type=bool,help='Store memory layout into the file.',default=False)
+    parser.add_argument('--debug',action='store_true',help='Generate debug information')
+    parser.add_argument("--memory",action='store_true',help='Store memory layout into the file.',)
     parser.add_argument("--output",type=str,nargs=1,help="Name of the output file (default is a.out)",default="a.out")
     parser.add_argument("input",nargs=1,help="Input file to translate")
 
@@ -42,7 +42,6 @@ def main():
     """
     args = get_parser(sys.argv) 
     # Arguments parsed, check the validity
-    pdb.set_trace()
     inf     = args.input[0]
     debug   = args.debug
     memory  = args.memory

@@ -26,7 +26,8 @@ class BIsa(object):
         "." : 0x5, 
         "," : 0x6, 
         "[" : 0x7, 
-        "]" : 0x8  
+        "]" : 0x8,
+        "x" : 0x9,  
     }
 
     @staticmethod
@@ -49,11 +50,25 @@ class BIsa(object):
         return False
 
     @staticmethod
+    def is_bjump(sym):
+        """
+        The jump is the  [
+        """
+        return sym is "["
+
+    @staticmethod
+    def is_ejump(sym):
+        """
+        The jump is "]"
+        """
+        return sym is "]"
+
+    @staticmethod
     def is_body_instruction(sym):
         """
         Returns true iff we are working with a body instructino
         """
-        if sym in [";",">","<","+","-",".",","]:
+        if sym in [";",">","<","+","-",".",",","x"]:
             return True
             
         return False

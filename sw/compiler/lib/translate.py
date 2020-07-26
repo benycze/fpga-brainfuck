@@ -10,8 +10,7 @@
 
 import pdb
 import readline
-import StringIO
-import isa.BIsa as BIsa
+from lib.isa import BIsa
 
 class BTranslationError(Exception):
     """
@@ -104,7 +103,7 @@ class BTranslate(object):
             char = self.__get_char()
             if char == '':
                 # Nothing else to read
-                self.last_sym is ''
+                self.last_sym = ''
                 break
 
             if char.isspace():
@@ -115,7 +114,10 @@ class BTranslate(object):
                 char = self.__get_char()
                 if not(char is "/"):
                     BTranslationError("Expecting / symbol",self.line_cnt,self.char_cnt)
+
+                # Process the commend and run the parsing again after you are done
                 self.__process_comment()
+                continue
 
             # Check if we are working with allowed
             # symbol.
@@ -126,7 +128,9 @@ class BTranslate(object):
             if self.debug:
                 print("Lexer: Parser symbol => {}".format(char))
 
+            # Remember the symbol and escape from the function
             self.last_sym = char
+            break
 
     def __translate_body(self):
         """
@@ -145,22 +149,40 @@ class BTranslate(object):
         # Get the symbol and analyze iff we are working with the JUMP instruction
         while True:
             self.__get_symbol()
+            # Check if we have something to process
             if self.last_sym is '':
                 if self.debug:
                     print("No other symbol to process, ending.")
-                break 
 
-            # Check if we are working with any jump symbol
-            if BIsa.is_jump_instruction(self.last_sym):
-                return self.__translate_cycle()
+                # No other instruction, return nop
+                nop_inst = ((";",0),self.mem_pos)
+                self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
+                inst_body.append(nop_inst)
+                break
+
+            # Check if we are working with any jump symbol, dump the body into the list
+            # and escape from the cycle
+            if BIsa.is_bjump(self.last_sym):
+                cycle_body = self.__translate_cycle()
+                inst_body.extend(cycle_body)
+                break
+
+            if BIsa.is_ejump(self.last_sym):
+                # We have a closing parenthesis inside the body, end the processing there and return
+                # to the upper __translate cycle
+                break
 
             # Check if we are working with a body instruction, we will return 
             # the error if not
             if not(BIsa.is_body_instruction(self.last_sym)):
-                raise BTranslationError("Unknown symbols {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
+                raise BTranslationError("Unknown symbol {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
 
             # So far so good, add it into the list and try next symbol
-            inst_body.append((self.last_sym,0), self.mem_pos)
+            inst = ((self.last_sym,0), self.mem_pos)
+            if self.debug:
+                print("Dumping the instruction: {}".format(str(inst)))
+
+            inst_body.append(inst)
             self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
         # We are out ... time to dump our code
         return inst_body
@@ -188,7 +210,6 @@ class BTranslate(object):
         self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
 
         # Check if we have a closing symbol
-        self.__get_symbol()
         if not(self.last_sym is ']'):
             raise BTranslationError("Cycle closing ] not found, detected {}.".format(self.last_sym), self.line_cnt, self.char_cnt) 
 
@@ -198,14 +219,19 @@ class BTranslate(object):
         fJumpOffset = eAddress - bAddress + BIsa.INST_WIDTH
         bJumpOffset = eAddress - bAddress - BIsa.INST_WIDTH
 
+        # Check that offsets are no longer than 255 bytes
+        if fJumpOffset > 255 or bJumpOffset > 255:
+            raise BTranslationError("Jump is longer than 256 bytes",self.line_cnt,self.char_cnt)
+
         # Generate the [
-        fJump = ("[",fJumpOffset)
+        fJump = (("[",fJumpOffset), bAddress)
         inst_body.append(fJump)
         # Append body to the list
         inst_body.extend(body_code)
-        # Generate the ]
-        bJump = ("]",bJumpOffset)
+        # Generate the ] and return the body
+        bJump = (("]",bJumpOffset), eAddress)
         inst_body.append(bJump)
+        return inst_body
 
     def __memory_map_to_bin(self, mem_map):
         """
@@ -222,13 +248,13 @@ class BTranslate(object):
             # jump instruction. Each instruction is encoded as (inst, addr),
             # where inst can be a symbol or jump tuple (jmp,val)
             bF = None
-            if BIsa.is_jump_instruction(m_elem[0])
-                bF = BIsa.translate_jump(*m_elem)
+            if BIsa.is_jump_instruction(m_elem[0]):
+                bF = BIsa.translate_jump(m_elem[0],m_elem[1])
             else:
                 bF = BIsa.translate_inst(m_elem[0])
             
             # Append the result of the conversion
-            ret.append(bF)
+            ret.extend(bF)
 
         return ret
 
@@ -238,13 +264,17 @@ class BTranslate(object):
         file is MIF (https://www.intel.com/content/www/us/en/programmable/quartushelp/13.0/mergedProjects/reference/glossary/def_mif.htm)
         """
         ret = """
-        DEPTH = {}; -- The size of memory in words
-        WIDTH = {}; -- The size of data in bits
-        ADDRESS_RADIX = HEX;          -- The radix for address values
-        DATA_RADIX = HEX;             -- The radix for data values
-        CONTENT                       -- start of (address : data pairs)
-        BEGIN
-        """.format(len(mem_map),8)
+-- Program - {}
+
+DEPTH = {}; -- The size of memory in words
+WIDTH = {}; -- The size of data in bits
+ADDRESS_RADIX = HEX;          -- The radix for address values
+DATA_RADIX = HEX;             -- The radix for data values
+CONTENT                       -- start of (address : data pairs)
+BEGIN\n
+        """.format(self.outfile, len(mem_map) * BIsa.INST_WIDTH, 8)
+        # Length of dumped data is the number of programm instructions times the instruction
+        # size
 
         # Dump the memory layout
         for m_elem,addr in mem_map:
@@ -252,18 +282,18 @@ class BTranslate(object):
             # with a jump instruction
             bData   = 0
             sym     = m_elem[0]
-            if BIsa.is_jump_instruction(sym)
+            if BIsa.is_jump_instruction(sym):
                 # It is a jump instruction
-                bData = BIsa.translate_jump(*m_elem)
+                bData = BIsa.translate_jump(m_elem[0],m_elem[1])
             else:
                 # It is an instruction
                 bData = BIsa.translate_inst(sym)
 
             # Each line starts with a comment, after that we need to dump 
             # address : data
-            ret += "-- Translated instruction ==> {}".format(sym)
-            ret += "{:x} : {:x};".format(addr,bData[0])
-            ret += "{:x} : {:x};".format(addr+1,bData[1])
+            ret += "-- Translated instruction ==> {}\n".format(sym)
+            ret += "{:x} : {:x};\n".format(addr,bData[0])
+            ret += "{:x} : {:x};\n".format(addr+1,bData[1])
 
         # End the file 
         ret += "END;"
@@ -285,23 +315,26 @@ class BTranslate(object):
             # That is the plan - let's rock!!
 
             self.inf = open(self.in_file,'r')
-            while True:
-                # Get the memory map and covert it to the binary form
-                bprogram = self.__translate_body()
-                # Write the memory map if it is required
-                if self.memory_map:
-                    print("Dumping the memory map to file {}".format(self.memory_map_name))
-                    mem_map_content = self.__dump_mem_map(bprogram)
-                    mem_map_file = open(self.memory_map_name,'w')
-                    mem_map_file.write(mem_map_content)
-                    mem_map_file.close()
+            # Get the memory map and covert it to the binary form
+            bprogram = self.__translate_body()
+            # Add the program termination symbol
+            iTerminate = (("x",0), self.mem_pos)
+            bprogram.append(iTerminate)
+            # Write the memory map if it is required
+            if self.memory_map:
+                print("Dumping the memory map to file {}".format(self.memory_map_name))
+                mem_map_content = self.__dump_mem_map(bprogram)
+                mem_map_file = open(self.memory_map_name,'w')
+                mem_map_file.write(mem_map_content)
+                mem_map_file.close()
 
-                # Convert the memory map (human readable to the binary form)
-                bin_form = self.__memory_map_to_bin(bprogram)
-                out_file = open(self.outfile,'wb')
-                out_file.write(bin_form)
-                out_file.close()
-                print("Dumping the binary code for the BCPU.")
+            # Convert the memory map (human readable to the binary form)
+            bin_form = self.__memory_map_to_bin(bprogram)
+            out_file = open(self.outfile,'wb')
+            out_file.write(bin_form)
+            out_file.close()
+            if self.debug:
+                print("Dumping the binary code into the file {}.".format(self.outfile))
 
         except IOError as e:
             print("Error during the file reading/writing operation.")
