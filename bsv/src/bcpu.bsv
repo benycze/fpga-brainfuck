@@ -46,8 +46,7 @@ interface BCpu_IFC;
 
 endinterface
 
-(* synthesize *)
-module mkBCpu(BCpu_IFC);
+module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
     
     // ------------------------------------------------------------------------
     // Registers & components 
@@ -72,6 +71,10 @@ module mkBCpu(BCpu_IFC);
         // Instruction memory
     BRAM_Configure instCfg = defaultValue;
     instCfg.allowWriteResponseBypass = False;
+
+    if(instMemInitFile != "") 
+        instCfg.loadFormat = tagged Hex instMemInitFile;
+
     BRAM2Port#(BMemAddress,BData) instMem <- mkBRAM2Server(instCfg);  
 
         // BCPU Core
@@ -313,6 +316,13 @@ module mkBCpu(BCpu_IFC);
         return cmdEn;
     endmethod
 
+endmodule : mkBCpuInit
+
+// Module without the inilization
+(* synthesize *)
+module mkBCpu(BCpu_IFC);
+    BCpu_IFC rIfc <- mkBCpuInit("");
+    return rIfc;
 endmodule : mkBCpu
 
 endpackage : bcpu
