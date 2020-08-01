@@ -11,6 +11,7 @@
 import pdb
 import readline
 from lib.isa import BIsa
+from lib.template import *
 
 class BTranslationError(Exception):
     """
@@ -267,17 +268,10 @@ class BTranslate(object):
         """
         Store the memory map into the file. The format of the 
         file is MIF (https://www.intel.com/content/www/us/en/programmable/quartushelp/13.0/mergedProjects/reference/glossary/def_mif.htm)
-        """
-        ret = """
--- Program - {}
 
-DEPTH = {}; -- The size of memory in words
-WIDTH = {}; -- The size of data in bits
-ADDRESS_RADIX = HEX;          -- The radix for address values
-DATA_RADIX = HEX;             -- The radix for data values
-CONTENT                       -- start of (address : data pairs)
-BEGIN\n
-        """.format(self.outfile, len(mem_map) * BIsa.INST_WIDTH, 8)
+        All tempaltes are defined in the template.py file.
+        """
+        ret = mif_hdr_template.format(self.outfile, len(mem_map) * BIsa.INST_WIDTH, 8)
         # Length of dumped data is the number of programm instructions times the instruction
         # size
 
@@ -298,11 +292,11 @@ BEGIN\n
             # address : data
             i_arg = BIsa.get_instruction_argument(bData) # Try to decode it back
             ret += "-- Translated instruction ==> {} (parameter = 0x{} )\n".format(sym,i_arg)
-            ret += "{:x} : {:x};\n".format(addr,bData[0])
-            ret += "{:x} : {:x};\n".format(addr+1,bData[1])
+            ret += mif_line_template.format(addr,bData[0])
+            ret += mif_line_template.format(addr+1,bData[1])
 
         # End the file 
-        ret += "END;"
+        ret += mif_end_template
         return ret
 
 
