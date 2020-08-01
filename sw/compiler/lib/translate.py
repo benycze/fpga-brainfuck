@@ -221,6 +221,8 @@ class BTranslate(object):
         bJumpOffset = eAddress - bAddress - BIsa.INST_WIDTH
 
         if self.debug:
+            print("bAddress = 0x{:x}".format(bAddress))
+            print("eAdress = 0x{:x}".format(eAddress))
             print("fJump \"[\" value is 0x{:x}".format(fJumpOffset))
             print("bJump \"]\" value is 0x{:x}".format(bJumpOffset))
 
