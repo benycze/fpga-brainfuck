@@ -42,7 +42,7 @@ architecture full of fpga_top is
 
     -- Constants ----------------------
     constant CLK_FREQ      : integer := 12e6;   -- set system clock frequency in Hz
-    constant BAUD_RATE     : integer := 115200; -- baud rate value
+    constant BAUD_RATE     : integer := 256000; -- baud rate value
     constant PARITY_BIT    : string  := "none"; -- legal values: "none", "even", "odd", "mark", "space"
     constant USE_DEBOUNCER : boolean := True;   -- enable/disable debouncer
 

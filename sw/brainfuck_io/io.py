@@ -31,13 +31,13 @@ class BrainfuckIO(object):
     # Maximal possible address
     MAX_ADDR = (2**24)-1
 
-    def __init__(self, port="/dev/ttyUSB0", baudrate=115200,timeout=10):
+    def __init__(self, port="/dev/ttyUSB0", baudrate=256000,timeout=10):
         """
         Initializer for the BrainfuckIO component
 
         Parameters:
             * port - port to open, the default value is /dev/ttyUSB0
-            * baudrate - used baudrate, the default value is 115200
+            * baudrate - used baudrate, the default value is 256000
             * timeout - timeout in seconds for read/write operations, default is 10
         """
         self.port       = port
