@@ -125,7 +125,10 @@ cvsim_%: %.bsv
 .PHONY: test_all vtest_prg test_prg vtest_all clean clean_exe clean_gen clean_log
 
 # Test targets - there are test which has the stand-alone testbenches and some
-# tests which are sharing the same testbench file (e.g. program tests)
+# tests which are sharing the same testbench file (e.g. program tests). 
+# 
+# The program tests need to be added to corresponding TEST_PRGS or VTEST_PRGS
+# variables.
 
 vtest_all: vsim_TbAddr vsim_TbInst vtest_prg
 
