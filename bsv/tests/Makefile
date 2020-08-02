@@ -129,7 +129,7 @@ cvsim_%: %.bsv
 
 vtest_all: vsim_TbAddr vsim_TbInst vtest_prg
 
-VTEST_PRGS=vtest_prg vsim_TbPtrInc vsim_TbMorePtrInc vsim_TbPtrDec
+VTEST_PRGS=vsim_TbPtrInc vsim_TbMorePtrInc vsim_TbPtrDec
 vtest_prg:
 	$(foreach TEST,$(VTEST_PRGS), \
 		@echo "Starting test $(TEST) ... "; \
