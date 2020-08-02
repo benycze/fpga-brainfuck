@@ -32,36 +32,6 @@ module mkTbAddr (Empty);
 
     Stmt fsmMemTest = seq 
         $display(" == READ & WRITE tests ==============");
-        $display("Testing read/write to cell memory ...");
-
-         // Run the test
-        for(idx <= 0; idx < 255; idx <= idx + 1) seq
-            action 
-                $display("Write to BRAM started in time ",$time);
-                BAddr addr = truncate(pack(idx));
-                BData data = truncate(pack(idx));
-                data_reg0 <= data;
-                addr_reg0 <= addr;
-                mcpu.write(addr,data);
-            endaction
-
-            action 
-                $display("Read request started in time ",$time);
-                let ret     <- mcpu.read(addr_reg0);
-                // Store reference data to the next cycle
-                data_reg1 <= data_reg0;
-                addr_reg1 <= addr_reg0;
-            endaction
-
-            action
-                let ret <- mcpu.getData();
-                if(ret != data_reg1)begin   
-                    $displayh("Read data 0x",ret," and write data 0x",idx," doesn't match!");
-                    report_and_stop(1);
-                end
-            endaction
-        endseq
-
         $display("Enable the operation and try to read a register (read running = ", mcpu.getReadRunning(), ") ...");
         mcpu.write(getAddress(regSpace,0),'h1);
         $display("Unit enable = ",mcpu.getCpuEnabled());
@@ -71,6 +41,7 @@ module mkTbAddr (Empty);
             $displayh("Command register during the EN mode --> 0x",ret);
         endaction
         mcpu.write(getAddress(regSpace,0),'h0);
+        delay(2);
 
         $display("Try to write the step enabled and check if the  unit was enabled");
         mcpu.write(getAddress(regSpace,0),'h2);
@@ -108,6 +79,37 @@ module mkTbAddr (Empty);
             end
         endaction
         $display("PC testing was finished!!");
+
+         // Run the test
+        delay(10);
+        $display("Testing read/write to cell memory ...");
+        for(idx <= 0; idx < 255; idx <= idx + 1) seq
+            action 
+                $display("Write to BRAM started in time ",$time);
+                BAddr addr = truncate(pack(idx));
+                BData data = truncate(pack(idx));
+                data_reg0 <= data;
+                addr_reg0 <= addr;
+                mcpu.write(addr,data);
+            endaction
+
+            action 
+                $display("Read request started in time ",$time);
+                let ret     <- mcpu.read(addr_reg0);
+                // Store reference data to the next cycle
+                data_reg1 <= data_reg0;
+                addr_reg1 <= addr_reg0;
+            endaction
+
+            action
+                let ret <- mcpu.getData();
+                if(ret != data_reg1)begin   
+                    $displayh("Read data 0x",ret," and write data 0x",idx," doesn't match!");
+                    report_and_stop(1);
+                end
+            endaction
+        endseq
+
         $display("== END READ & WRITE tests ===========");  
         report_and_stop(0);
     endseq;

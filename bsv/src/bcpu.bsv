@@ -88,11 +88,15 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
     FIFO#(BRAMRequest#(BMemAddress,BData)) instReq <- mkFIFO;
     
         // Helping registers
-    Reg#(Bool)              readRunning     <- mkReg(False);
     Reg#(BData)             outRegData      <- mkReg(0);       
     Reg#(Bool)              dataDrained     <- mkReg(False);
     Reg#(Maybe#(BData))     regSpaceRet     <- mkReg(tagged Invalid);
+    Reg#(Bool)              regCellRead     <- mkReg(False);
+    Reg#(Bool)              regInstRead     <- mkReg(False);
+    Reg#(Bool)              regRegRead      <- mkReg(False);
     FIFO#(BData)            readRetData     <- mkFIFO;
+
+    let readRunning = regCellRead || regInstRead || regRegRead;
 
     // Read / write registers because we don't want to block the read/write 
     // methods. Therefore, the input/outout FIFO fronts has 1 more available 
@@ -133,25 +137,24 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
         // into the FIFO, output register data are written to the special register
         // during the read and multiplexed to the output.
     (* descending_urgency = "drain_reg,drain_data_from_cell_memory_app, drain_data_from_instruction_memory_app" *)
-    (* mutually_exclusive = "drain_data_from_cell_memory_app,drain_data_from_instruction_memory_app" *)
-    rule drain_data_from_cell_memory_app (!cmdEn && readRunning);
+    rule drain_data_from_cell_memory_app (!cmdEn && regCellRead);
         let ret_data <- cellMem.portA.response.get; 
         readRetData.enq(ret_data);
-        readRunning <= False;
+        regCellRead <= False;
         $display("BCpu: draining data from cell memory (during non-operational mode).");
     endrule
 
-    rule drain_data_from_instruction_memory_app(!cmdEn && readRunning);
+    rule drain_data_from_instruction_memory_app(!cmdEn && regInstRead);
         let ret_data <- instMem.portA.response.get;
         readRetData.enq(ret_data);
-        readRunning <= False;
+        regInstRead <= False;
         $display("BCpu: draining data from instruction memory (during non-operational mode).");
     endrule
 
-    rule drain_reg (regSpaceRet matches tagged Valid .data &&& readRunning);
+    rule drain_reg (regSpaceRet matches tagged Valid .data &&& regRegRead);
         readRetData.enq(data);
         regSpaceRet <= tagged Invalid;
-        readRunning <= False;
+        regRegRead  <= False;
         $display("BCpu: draining data from the register space");
     endrule
 
@@ -204,8 +207,8 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
         let mem_addr_slice   = addr[valueOf(BAddrWidth)-3:0];
         let reg_addr_slice   = addr[3:0];
         case (space_addr_slice) 
-            //cellSpace  : begin
             cellSpace : begin
+                regCellRead <= True;
                 $display("BCpu read: Reading the CELL memory.");
                 if(!cmdEn)
                     cellReq.enq(makeBRAMRequest(False,mem_addr_slice,0));
@@ -213,6 +216,7 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
                     $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
            instSpace  : begin
+                regInstRead <= True;
                 $display("BCpu read: Reading the INSTRUCTION memory.");
                 if(!cmdEn)
                     instReq.enq(makeBRAMRequest(False,mem_addr_slice,0));
@@ -221,6 +225,8 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
             end
             regSpace  : begin
                 $display("BCpu read: Reading INTERNAL REGISTERS.");
+                // Turn the register read
+                regRegRead <= True;
                 // Prepare data there & send them
                 let pcVal    = bCore.getPC();
                 let flagData = {'0, 
@@ -247,7 +253,6 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
                 $display("BCpu read: Required address space wasn't found.");
             end
         endcase
-        readRunning <= True;
 
         $display("Time = ",$time);
         $displayh("* BCpu read: Read method fired on address 0x",addr);
