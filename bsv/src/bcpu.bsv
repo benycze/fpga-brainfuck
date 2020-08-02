@@ -128,11 +128,12 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
         instMem.portA.request.put(data);
     endrule
 
-        // Rules for the selecction of output data from internal registers
+        // Rules for the selecttion of output data from internal registers
         // or command register. Data in command register. BRAM memory is written 
         // into the FIFO, output register data are written to the special register
         // during the read and multiplexed to the output.
-    (* mutually_exclusive = "drain_data_from_cell_memory_app, drain_data_from_instruction_memory_app, drain_reg" *)
+    (* descending_urgency = "drain_reg,drain_data_from_cell_memory_app, drain_data_from_instruction_memory_app" *)
+    (* mutually_exclusive = "drain_data_from_cell_memory_app,drain_data_from_instruction_memory_app" *)
     rule drain_data_from_cell_memory_app (!cmdEn && readRunning);
         let ret_data <- cellMem.portA.response.get; 
         readRetData.enq(ret_data);

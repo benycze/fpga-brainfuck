@@ -311,7 +311,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         if(decInst.takeOut && outDataFifo.notFull()) begin
             outDataWire.wset(tmpCellAData);
         end else begin
-            $display("Unable to write to the output FIFO. THe memory is full in time ",$time);
+            $display("BCore: Unable to write to the output FIFO. THe memory is full in time ",$time);
         end
 
             // Jumps - in this case we need to prepare the new address values (we have to count with the value
