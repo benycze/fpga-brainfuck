@@ -46,7 +46,7 @@ class BTranslate(object):
         self.debug      = debug
         self.memory_map = memory_map
         self.outfile    = outfile
-        self.memory_map_name = "map-" + outfile + ".mif"
+        self.memory_map_name = outfile + ".mif"
         # Helping variables - source code parsing
         self.line_buf   = ''
         self.line_cnt   = 0
