@@ -1,0 +1,16 @@
+-- Program - ptr_inc
+
+DEPTH = 4; -- The size of memory in words
+WIDTH = 8; -- The size of data in bits
+ADDRESS_RADIX = HEX;          -- The radix for address values
+DATA_RADIX = HEX;             -- The radix for data values
+CONTENT                       -- start of (address : data pairs)
+BEGIN
+
+0 : 1;
+1 : 1;
+2 : 1;
+3 : 2;
+
+END;
+
