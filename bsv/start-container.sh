@@ -13,6 +13,8 @@ set -e
 # Configuration -----------------------------------------------------------------
 MNT_PATH=`pwd`
 MNT_WDIR="/bsc-work"
+COMPILER_PATH=`pwd`/../sw
+COMPILER_WDIR="/sw"
 
 DOCKER_BIN=/usr/bin/docker
 
@@ -32,9 +34,13 @@ function start_docker {
     echo "############################################################################"
 
     echo " * We are looking for the bsc-compiler image"
-    echo " * Local folder will be mounted to /bsc-work folder inside the container :)"
+    echo " * Local folder will be mounted to /bsc-work folder inside the container"
+    echo " * The BCompiler will be mounted to /sw folder inside the container"
 
-    ${DOCKER_BIN} run --rm -t -i --mount=type=bind,source=${MNT_PATH},destination=${MNT_WDIR} --workdir=${MNT_WDIR} localhost/bsc-compiler $1
+    ${DOCKER_BIN} run --rm -t -i \
+        --mount=type=bind,source=${MNT_PATH},destination=${MNT_WDIR} \
+        --mount=type=bind,source=${COMPILER_PATH},destination=${COMPILER_WDIR} \
+        --workdir=${MNT_WDIR} localhost/bsc-compiler $1
 }
 
 # Parse arguments ----------------------------------------------------------------

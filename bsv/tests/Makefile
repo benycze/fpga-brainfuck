@@ -40,6 +40,21 @@ sim_TbInst: TbInst.bsv csim_TbInst
 vsim_TbInst: TbInst.bsv cvsim_TbInst
 
 # General bluespec targets ---------------------------------------------
+
+# Brainfuck compiler and general target for the program translation
+BCC=python3 -B /sw/compiler/compiler.py
+
+# The following target generates a MIF file from the current source code
+# using the current compiler which is mounted to the /sw folder inside the container
+#
+# All you have to do is to add the dependency to the file like this:
+# 
+# abc: data/ptr_inc/ptr_inc.mif
+#
+%.mif: %.b
+	@echo "Translating the $@ file ..."
+	$(BCC) --memory --output $* $<
+
 csim_%: %.bsv
 	@echo "Translating the sources ..."
 	$(MAKE) -C .. compile
@@ -68,4 +83,11 @@ test_all: sim_TbAddr sim_TbInst
 
 .PHONY: clean
 clean:
-	rm -rf *.so *.exe
+	@echo "Cleaning generated files ..."
+	@for f in $(shell ls data); do \
+	echo " * cleaning the $${f} folder"; \
+	rm -f data/$${f}/$${f}.mif data/$${f}/$${f}; \
+	done
+
+	@echo "Cleaning directory ..."
+	rm -f *.so *.exe
