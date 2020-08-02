@@ -10,8 +10,8 @@ package Tb;
 
 import bcpu :: *;
 import bpkg :: *;
-
-import StmtFSM :: *;
+import TbCommon :: *;
+import StmtFSM  :: *;
 
 (* synthesize *)
 module mkTbAddr (Empty);
@@ -29,7 +29,6 @@ module mkTbAddr (Empty);
     // Testing data for the PC
     BData pc0 = 'h31;
     BData pc1 = 'h02;
-
 
     Stmt fsmMemTest = seq 
         $display(" == READ & WRITE tests ==============");
@@ -58,7 +57,7 @@ module mkTbAddr (Empty);
                 let ret <- mcpu.getData();
                 if(ret != data_reg1)begin   
                     $displayh("Read data 0x",ret," and write data 0x",idx," doesn't match!");
-                    $finish(1);
+                    report_and_stop(1);
                 end
             endaction
         endseq
@@ -81,7 +80,7 @@ module mkTbAddr (Empty);
             let ret <- mcpu.getData();
             if(ret != 0) begin
                 $display("Step flag has to be zero now.");
-                $finish(1);
+                report_and_stop(1);
             end
             $displayh("Command register during the EN mode --> 0x",ret);
         endaction
@@ -105,12 +104,12 @@ module mkTbAddr (Empty);
                 $display("PC value read/write is not working!");
                 $display("* expected - 0x",pc1," (MSB) and 0x",pc0," (LSB)");
                 $displayh("* received - 0x",addr_reg1,"(MSB) and 0x",addr_reg0," (LSB)");
-                $finish(1);
+                report_and_stop(1);
             end
         endaction
         $display("PC testing was finished!!");
-
         $display("== END READ & WRITE tests ===========");  
+        report_and_stop(0);
     endseq;
 
     mkAutoFSM(fsmMemTest);

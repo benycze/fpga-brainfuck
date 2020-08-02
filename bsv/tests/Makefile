@@ -12,13 +12,32 @@ BUILD_BSIM_FOLDER = ../build
 BUILD_VERILOG_FOLDER = ../build_verilog
 BCPU_SRC = ../src
 
+# Test rusult log
+TEST_LOG=TEST_RESULT.log
+
 include ../Common_Inc.mk
+
+
+# -------------------------------------------------------------------------------
+# Macros 
+# -------------------------------------------------------------------------------
+
+# Macro which starts the Bluespec simulation and checks the result. This
+# is a small hack because the Bluespec binary is not returning the code pased
+# to $finish function.
+define run_and_check
+	@echo "Starting the test ..."
+	./$(strip $(1)) | tee $(TEST_LOG)
+	if [ `grep -c 'RESULT=  *0' TEST_RESULT.log` -ne 1 ]; then \
+ 		exit 1; \
+	fi 
+endef
 
 # -------------------------------------------------------------------------------
 # Targets
 # -------------------------------------------------------------------------------
 
-default: test_all vtest_all
+default: test_all vtest_all 
 
 # How to create a test:
 # 1] Create a test (BSV file) - the name of the top module should have a pattern mkFILENAME. 
@@ -30,14 +49,41 @@ default: test_all vtest_all
 # 
 # That is all folks! The rest of the translation is handled by the general csim_% and cvsim_% 
 # targets.
+#
+# IMPORTANT: EACH TB SHOULD USE THE report_and_stop FUNCTION FROM THE TbCommon PACKAGE BECAUSE
+# THE MAKEFILE IS USING THE PRINTED STRING FOR DECISION ABOUT THE TEST RESULT (SEE THE 
+# run_and_check MACRO FOR MORE DETAILS)
 
 .PHONY: sim_tbAddr vsim_TbAddr
-sim_TbAddr: TbAddr.bsv csim_TbAddr
-vsim_TbAddr: TbAddr.bsv cvsim_TbAddr
+sim_TbAddr: clean_log TbAddr.bsv csim_TbAddr
+vsim_TbAddr: clean_log TbAddr.bsv cvsim_TbAddr
 
 .PHONY: sim_TbInst vsim_TbInst
 sim_TbInst: TbInst.bsv csim_TbInst
 vsim_TbInst: TbInst.bsv cvsim_TbInst
+
+# Tests of the compiler programs inside the BCpu, each target translates the
+# MIF file which belongs to the test. The translation target with b_* also 
+# modifies the argument to point on translated  file. So, each target created
+# as usual + the b_* target which poins to a file.
+
+.PHONY: sim_TbPtrInc vsim_TbPtrInc b_TbPtrInc
+sim_TbPtrInc:  b_TbPtrInc TbPrgRun.bsv csim_TbPrgRun
+vsim_TbPtrInc:  b_TbPtrInc TbPrgRun.bsv cvsim_TbPrgRun
+b_TbPtrInc: data/ptr_inc/ptr_inc.mif
+	$(eval BSC_ARGS += -D MIF_FILE=$<)
+
+.PHONY: sim_TbMorePtrInc vsim_TbMorePtrInc b_TbMorePtrInc
+sim_TbMorePtrInc:  b_TbMorePtrInc TbPrgRun.bsv csim_TbPrgRun
+vsim_TbMorePtrInc: b_TbMorePtrInc TbPrgRun.bsv cvsim_TbPrgRun
+b_TbMorePtrInc: data/more_ptr_inc/more_ptr_inc.mif
+	$(eval BSC_ARGS += -D MIF_FILE=$<)
+
+.PHONY: sim_TbPtrDec vsim_TbPtrDec b_TbPtrDec
+sim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv csim_TbPrgRun 
+vsim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv cvsim_TbPrgRun
+b_TbPtrDec: data/ptr_dec/ptr_dec.mif
+	$(eval BSC_ARGS += -D MIF_FILE=$<)
 
 # General bluespec targets ---------------------------------------------
 
@@ -51,43 +97,68 @@ BCC=python3 -B /sw/compiler/compiler.py
 # 
 # abc: data/ptr_inc/ptr_inc.mif
 #
+# The test also sets the BSC flag for the BSC compiler
 %.mif: %.b
 	@echo "Translating the $@ file ..."
 	$(BCC) --memory --output $* $<
 
 csim_%: %.bsv
-	@echo "Translating the sources ..."
+	@echo "Translating the sources (BSC)..."
 	$(MAKE) -C .. compile
 	@echo "INFO: linking bsc-compiled objects into Bluesim executable"
 	bsc -u -elab -sim $(BSC_ARGS) $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $<
 	bsc -sim -parallel-sim-link 4 $(BSC_ARGS) -e mk$* -o ./$@.exe $(BSC_C_FLAGS) 
 	@echo "Running the simulation (Bluespec) ..."
-	./$@.exe
+	$(call run_and_check, $@.exe )
 
 cvsim_%: %.bsv
-	@echo "Translating the sources ..."
+	@echo "Translating the sources (BSC) ..."
 	$(MAKE) -C .. vcompile
 	@echo "Compiling the verilog model and simulator ..."
-	bsc -u -elab -verilog  $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $<
+	bsc -u -elab -verilog $ $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $<
 	bsc -verilog $(BSC_ARGS) -remove-dollar -vsearch $(VERILOG_PATH) -e mk$* -o ./$@.exe
 	@echo "Running the simulation (Verilog) ..."
-	./$@.exe
+	$(call run_and_check, $@.exe )
 
 # Run all available tests -------------------------------------------
 
-.PHONY: vtest_all
-vtest_all: vsim_TbAddr vsim_TbInst
+.PHONY: test_all vtest_prg test_prg vtest_all clean clean_exe clean_gen clean_log
 
-.PHONY: test_all
-test_all: sim_TbAddr sim_TbInst
+# Test targets - there are test which has the stand-alone testbenches and some
+# tests which are sharing the same testbench file (e.g. program tests)
 
-.PHONY: clean
-clean:
+vtest_all: vsim_TbAddr vsim_TbInst vtest_prg
+
+VTEST_PRGS=vtest_prg vsim_TbPtrInc vsim_TbMorePtrInc vsim_TbPtrDec
+vtest_prg:
+	$(foreach TEST,$(VTEST_PRGS), \
+		@echo "Starting test $(TEST) ... "; \
+		$(MAKE) clean_exe;\
+		$(MAKE) $(TEST))
+
+
+test_all: sim_TbAddr sim_TbInst test_prg 
+
+TEST_PRGS=sim_TbPtrInc sim_TbMorePtrInc sim_TbPtrDec
+test_prg:
+	$(foreach TEST,$(TEST_PRGS), \
+		@echo "Starting test $(TEST) ... "; \
+		$(MAKE) clean_exe;\
+		$(MAKE) $(TEST);)
+
+# Clean targets
+clean_exe:
+	@echo "Cleaning simulator files ..."
+	rm -f *.so *.exe
+
+clean_gen:
 	@echo "Cleaning generated files ..."
 	@for f in $(shell ls data); do \
 	echo " * cleaning the $${f} folder"; \
 	rm -f data/$${f}/$${f}.mif data/$${f}/$${f}; \
 	done
 
-	@echo "Cleaning directory ..."
-	rm -f *.so *.exe
+clean_log:
+	rm -f $(TEST_LOG)
+
+clean: clean_exe clean_gen clean_log

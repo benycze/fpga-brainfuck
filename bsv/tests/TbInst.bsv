@@ -9,7 +9,8 @@
 package Tb;
 
 import binst :: *;
-import StmtFSM :: *;
+import StmtFSM  :: *;
+import TbCommon :: *;
 import Vector :: *;
 
 (* synthesize *)
@@ -48,7 +49,7 @@ module mkTbInst (Empty);
                 $display("Reference and computed opcode doesn't match:");
                 $displayh("Expected - 0x", exp);
                 $displayh("Received - 0x", inConv);
-                $finish(1);
+                report_and_stop(1);
             end
         endaction;
     endfunction
@@ -64,6 +65,7 @@ module mkTbInst (Empty);
 
         $display("Everything seems fine :-)");
         $display("== BINST conversion tests ===========");  
+        report_and_stop(0);
     endseq;
 
     mkAutoFSM(fsmMemTest);
