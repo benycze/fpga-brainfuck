@@ -122,7 +122,7 @@ cvsim_%: %.bsv
 
 # Run all available tests -------------------------------------------
 
-.PHONY: test_all vtest_prg test_prg vtest_all clean clean_exe clean_gen clean_log
+.PHONY: test_all vtest_prg test_prg vtest_all clean clean_exe clean_gen clean_log help
 
 # Test targets - there are test which has the stand-alone testbenches and some
 # tests which are sharing the same testbench file (e.g. program tests). 
@@ -130,9 +130,11 @@ cvsim_%: %.bsv
 # The program tests need to be added to corresponding TEST_PRGS or VTEST_PRGS
 # variables.
 
-vtest_all: vsim_TbAddr vsim_TbInst vtest_prg
-
+# Test target variables
+VTEST_TARGETS=vsim_TbAddr vsim_TbInst vtest_prg
 VTEST_PRGS=vsim_TbPtrInc vsim_TbMorePtrInc vsim_TbPtrDec
+
+vtest_all: $(VTEST_TARGETS)
 vtest_prg:
 	$(foreach TEST,$(VTEST_PRGS), \
 		@echo "Starting test $(TEST) ... "; \
@@ -140,9 +142,11 @@ vtest_prg:
 		$(MAKE) $(TEST))
 
 
-test_all: sim_TbAddr sim_TbInst test_prg 
-
+# Test variables
+TEST_TARGETS=sim_TbAddr sim_TbInst test_prg 
 TEST_PRGS=sim_TbPtrInc sim_TbMorePtrInc sim_TbPtrDec
+
+test_all: $(TEST_TARGETS)
 test_prg:
 	$(foreach TEST,$(TEST_PRGS), \
 		@echo "Starting test $(TEST) ... "; \
@@ -165,3 +169,18 @@ clean_log:
 	rm -f $(TEST_LOG)
 
 clean: clean_exe clean_gen clean_log
+
+# Help target
+help:
+	@echo "Makefile targets:"
+	@echo "* clean - cleans everything"
+	@echo "* clean_exe - cleans all exe files"
+	@echo "* clean_gen - cleans all generated files"
+	@echo "* test_all - runs the test of all Bluespec simulation testbenches"
+	@echo "		targets --> $(TEST_TARGETS)"
+	@echo "* test_prg - runs all Brainfuck tests in Bluespec simulation environment"	
+	@echo "		targets --> $(TEST_PRGS)"
+	@echo "* vtest_all - runs the test of all Verilog simulation testbenches"
+	@echo "		targets --> $(VTEST_TARGETS)"
+	@echo "* vtest_prg - runs all Brainfuck tests in Verilog simulation environment"
+	@echo "		targets --> $(VTEST_PRGS)"
