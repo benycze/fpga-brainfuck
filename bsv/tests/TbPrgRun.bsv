@@ -12,13 +12,18 @@ import bcpu :: *;
 import TbCommon :: *;
 import StmtFSM :: *;
 
+
 (* synthesize *)
 module mkTbPrgRun (Empty);
 
     BCpu_IFC mcpu <- mkBCpu;
+    
+    // Constant variables in the program
+    String mifFile = `MIF_FILE;
 
     Stmt fsmMemTest = seq 
         $display(" == BEGIN - Program test ==============");
+        $display("* Starting the processing of MIF file: ", mifFile);
 
         $display("== END - Program test ================="); 
         report_and_stop(0);

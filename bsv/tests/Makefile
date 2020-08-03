@@ -71,19 +71,19 @@ vsim_TbInst: TbInst.bsv cvsim_TbInst
 sim_TbPtrInc:  b_TbPtrInc TbPrgRun.bsv csim_TbPrgRun
 vsim_TbPtrInc:  b_TbPtrInc TbPrgRun.bsv cvsim_TbPrgRun
 b_TbPtrInc: data/ptr_inc/ptr_inc.mif
-	$(eval BSC_ARGS += -D MIF_FILE=$<)
+	$(eval BSC_ARGS += -D MIF_FILE=\"$<\")
 
 .PHONY: sim_TbMorePtrInc vsim_TbMorePtrInc b_TbMorePtrInc
 sim_TbMorePtrInc:  b_TbMorePtrInc TbPrgRun.bsv csim_TbPrgRun
 vsim_TbMorePtrInc: b_TbMorePtrInc TbPrgRun.bsv cvsim_TbPrgRun
 b_TbMorePtrInc: data/more_ptr_inc/more_ptr_inc.mif
-	$(eval BSC_ARGS += -D MIF_FILE=$<)
+	$(eval BSC_ARGS += -D MIF_FILE=\"$<\")
 
 .PHONY: sim_TbPtrDec vsim_TbPtrDec b_TbPtrDec
 sim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv csim_TbPrgRun 
 vsim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv cvsim_TbPrgRun
 b_TbPtrDec: data/ptr_dec/ptr_dec.mif
-	$(eval BSC_ARGS += -D MIF_FILE=$<)
+	$(eval BSC_ARGS += -D MIF_FILE=\"$<\")
 
 # General bluespec targets ---------------------------------------------
 
