@@ -6,7 +6,7 @@
 //  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 // -------------------------------------------------------------------------------
 
-package Tb;
+package TbPrgRun;
 
 import bcpu :: *;
 import TbCommon :: *;
@@ -28,4 +28,4 @@ module mkTbPrgRun (Empty);
 
 endmodule : mkTbPrgRun 
 
-endpackage : Tb
+endpackage : TbPrgRun
