@@ -8,22 +8,52 @@
 
 package TbPrgRun;
 
+import bpkg :: *;
 import bcpu :: *;
 import TbCommon :: *;
 import StmtFSM :: *;
+
+import BRAM :: *;
 
 
 (* synthesize *)
 module mkTbPrgRun (Empty);
 
-    BCpu_IFC mcpu <- mkBCpu;
-    
+    // ====================================================
+    // Global variables 
+    // ====================================================
+
     // Constant variables in the program
-    String mifFile = `MIF_FILE;
+    // Folder and input file are passed via
+    String prgFolderPath = `PRG_FOLDER;
+    String mifFilePath   = prgFolderPath + `MIF_FILE;
+    String cellResPath   = prgFolderPath + "cell_mem.mif";
+
+    // ====================================================
+    // Test design 
+    // ====================================================
+
+    // BCpu design entity
+    BCpu_IFC mcpu <- mkBCpu;
+
+    // Memory with cell results
+    BRAM_Configure cellMemResCfg = defaultValue;
+    cellMemResCfg.allowWriteResponseBypass = False;
+    cellMemResCfg.loadFormat = tagged Hex cellResPath;
+
+    BRAM2Port#(BMemAddress,BData) cellMem <- mkBRAM2Server(cellMemResCfg);
 
     Stmt fsmMemTest = seq 
         $display(" == BEGIN - Program test ==============");
-        $display("* Starting the processing of MIF file: ", mifFile);
+        $display("* Work directory with program files:", prgFolderPath);
+        $display("* Program MIF file path: ", mifFilePath);
+        $display("* Cell memory MIF file path:",cellResPath);
+        $display("========================================");
+
+        cellMem.portA.request.put(makeBRAMRequest(False,0,0));
+        $displayh("Data=",cellMem.portA.response.get);
+
+
 
         $display("== END - Program test ================="); 
         report_and_stop(0);
