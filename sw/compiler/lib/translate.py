@@ -30,7 +30,7 @@ class BTranslate(object):
     code to the BCPU code.
     """
 
-    def __init__(self,in_file,debug,memory_map,outfile):
+    def __init__(self,in_file,debug,memory_map,addr_width,outfile):
         """
         Initilization of the class which takes care of the 
         translation to the BCPU.
@@ -39,14 +39,17 @@ class BTranslate(object):
             - in_file - input file to translate (string)
             - debug - debug is enabled (bool)
             - memory_map - generate the output memory map (bool). 
-                The output file will have the map-${outfile}.bin
+                The output file will have the ${outfile}.mif
+            -hex addr - required hexadecimal address width
             - Outfile - output file name (string)
         """
         self.in_file    = in_file
         self.debug      = debug
         self.memory_map = memory_map
         self.outfile    = outfile
-        self.memory_map_name = outfile + ".mif"
+        self.memory_map_name   = outfile + ".mif"
+        self.memory_hmap_name  = outfile + ".hex"
+        self.memory_addr_width = addr_width
         # Helping variables - source code parsing
         self.line_buf   = ''
         self.line_cnt   = 0
@@ -266,6 +269,26 @@ class BTranslate(object):
 
         return ret
 
+    def __dump_inst(self,m_elem):
+        """
+        Translate one memory element whichis a tuple of instruction
+        and data (inst, data)
+
+        Return: Translated instruction
+        """
+        # Prepare data - m_elem is not a tuple iff we are not working
+        # with a jump instruction
+        bData   = 0
+        sym     = m_elem[0]
+        if BIsa.is_jump_instruction(sym):
+            # It is a jump instruction
+            bData = BIsa.translate_jump(m_elem[0],m_elem[1])
+        else:
+            # It is an instruction
+            bData = BIsa.translate_inst(sym)
+
+        return bData
+
     def __dump_mem_map(self,mem_map):
         """
         Store the memory map into the file. The format of the 
@@ -279,26 +302,37 @@ class BTranslate(object):
 
         # Dump the memory layout
         for m_elem,addr in mem_map:
-            # Prepare data - m_elem is not a tuple iff we are not working
-            # with a jump instruction
-            bData   = 0
-            sym     = m_elem[0]
-            if BIsa.is_jump_instruction(sym):
-                # It is a jump instruction
-                bData = BIsa.translate_jump(m_elem[0],m_elem[1])
-            else:
-                # It is an instruction
-                bData = BIsa.translate_inst(sym)
-
+            bData = self.__dump_inst(m_elem)
             # Each line starts with a comment, after that we need to dump 
             # address : data
             i_arg = BIsa.get_instruction_argument(bData) # Try to decode it back
-            ret += "-- Translated instruction ==> {} (parameter = 0x{} )\n".format(sym,i_arg)
+            ret += "-- Translated instruction ==> {} (parameter = 0x{} )\n".format(m_elem[0],i_arg)
             ret += mif_line_template.format(addr,bData[0])
             ret += mif_line_template.format(addr+1,bData[1])
 
         # End the file 
         ret += mif_end_template
+        return ret
+
+    def __dump_mem_hmap(self,mem_map):
+        """
+        Store the memory map in the hexadecimal format (one line per 2 bytes).
+
+        The total number of bytes is 2**self.memory_addr_width
+        """
+        # Process the memory, dump it to the file
+        ret = ""
+        cell_addrs = 2**self.memory_addr_width
+        for m_elem,_ in mem_map:
+            bData = self.__dump_inst(m_elem)
+            ret   += hex_line_template.format(*bData)
+            cell_addrs = cell_addrs - 2
+
+        # Fill the rest of the file with zeros
+        while(cell_addrs > 0):
+            ret += hex_line_template.format(0,0)
+            cell_addrs = cell_addrs - 2
+
         return ret
 
 
@@ -329,6 +363,12 @@ class BTranslate(object):
                 mem_map_file = open(self.memory_map_name,'w')
                 mem_map_file.write(mem_map_content)
                 mem_map_file.close()
+
+                print("Dumping the memory map to file {}".format(self.memory_hmap_name))
+                mem_hmap_content = self.__dump_mem_hmap(bprogram)
+                mem_hmap_content_file = open(self.memory_hmap_name,'w')
+                mem_hmap_content_file.write(mem_hmap_content)
+                mem_hmap_content_file.close()
 
             # Convert the memory map (human readable to the binary form)
             bin_form = self.__memory_map_to_bin(bprogram)

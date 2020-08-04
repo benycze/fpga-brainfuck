@@ -33,3 +33,6 @@ mif_line_template = "{:x} : {:x};\n"
 
 # End of the template
 mif_end_template = "END;"
+
+# Hexadecimal dump line
+hex_line_template = "{:x} {:x}\n"
