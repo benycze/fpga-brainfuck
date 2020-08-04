@@ -26,8 +26,8 @@ module mkTbPrgRun (Empty);
     // Constant variables in the program
     // Folder and input file are passed via
     String prgFolderPath = `PRG_FOLDER;
-    String mifFilePath   = prgFolderPath + `MIF_FILE;
-    String cellResPath   = prgFolderPath + "cell_mem.mif";
+    String hexFilePath   = prgFolderPath + `HEX_FILE;
+    String cellResPath   = prgFolderPath + "cell_mem.hex";
 
     // ====================================================
     // Test design 
@@ -46,14 +46,12 @@ module mkTbPrgRun (Empty);
     Stmt fsmMemTest = seq 
         $display(" == BEGIN - Program test ==============");
         $display("* Work directory with program files:", prgFolderPath);
-        $display("* Program MIF file path: ", mifFilePath);
-        $display("* Cell memory MIF file path:",cellResPath);
+        $display("* Program HEX file path: ", hexFilePath);
+        $display("* Cell memory HEX file path:",cellResPath);
         $display("========================================");
 
-        cellMem.portA.request.put(makeBRAMRequest(False,0,0));
-        $displayh("Data=",cellMem.portA.response.get);
-
-
+        //cellMem.portA.request.put(makeBRAMRequest(False,4,0));
+        //$displayh("Data=",cellMem.portA.response.get);
 
         $display("== END - Program test ================="); 
         report_and_stop(0);

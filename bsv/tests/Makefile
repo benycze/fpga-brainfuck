@@ -69,35 +69,35 @@ vsim_TbInst: TbInst.bsv cvsim_TbInst
 .PHONY: sim_TbPtrInc vsim_TbPtrInc b_TbPtrInc
 sim_TbPtrInc:  b_TbPtrInc TbPrgRun.bsv csim_TbPrgRun
 vsim_TbPtrInc:  b_TbPtrInc TbPrgRun.bsv cvsim_TbPrgRun
-b_TbPtrInc: data/ptr_inc/ptr_inc.mif
-	$(eval BSC_ARGS += -D MIF_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
+b_TbPtrInc: data/ptr_inc/ptr_inc.hex
+	$(eval BSC_ARGS += -D HEX_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
 
 .PHONY: sim_TbMorePtrInc vsim_TbMorePtrInc b_TbMorePtrInc
 sim_TbMorePtrInc:  b_TbMorePtrInc TbPrgRun.bsv csim_TbPrgRun
 vsim_TbMorePtrInc: b_TbMorePtrInc TbPrgRun.bsv cvsim_TbPrgRun
-b_TbMorePtrInc: data/more_ptr_inc/more_ptr_inc.mif
-	$(eval BSC_ARGS += -D MIF_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
+b_TbMorePtrInc: data/more_ptr_inc/more_ptr_inc.hex
+	$(eval BSC_ARGS += -D HEX_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
 
 .PHONY: sim_TbPtrDec vsim_TbPtrDec b_TbPtrDec
 sim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv csim_TbPrgRun 
 vsim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv cvsim_TbPrgRun
-b_TbPtrDec: data/ptr_dec/ptr_dec.mif
-	$(eval BSC_ARGS += -D MIF_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
+b_TbPtrDec: data/ptr_dec/ptr_dec.hex
+	$(eval BSC_ARGS += -D HEX_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
 
 # General bluespec targets ---------------------------------------------
 
 # Brainfuck compiler and general target for the program translation
 BCC=python3 -B /sw/compiler/compiler.py
 
-# The following target generates a MIF file from the current source code
+# The following target generates a HEX file from the current source code
 # using the current compiler which is mounted to the /sw folder inside the container
 #
 # All you have to do is to add the dependency to the file like this:
 # 
-# abc: data/ptr_inc/ptr_inc.mif
+# abc: data/ptr_inc/ptr_inc.hex
 #
 # The test also sets the BSC flag for the BSC compiler
-%.mif: %.b
+%.hex: %.b
 	@echo "Translating the $@ file ..."
 	$(BCC) --memory --output $* $<
 
