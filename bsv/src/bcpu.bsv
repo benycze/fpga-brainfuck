@@ -203,6 +203,8 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
 
         // Write new command register
         regCmd      <= tmpCmdReg;
+
+        $display("BCpu: Configuration of BCPU updated.");
     endrule
 
     rule drain_bcore_output_data (outputBcoreData matches tagged Invalid);
