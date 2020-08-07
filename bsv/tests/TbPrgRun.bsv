@@ -16,25 +16,25 @@ import StmtFSM :: *;
 import BRAM :: *;
 
 
+// ====================================================
+// Global variables 
+// ====================================================
+
+// Constant variables in the program
+// Folder and input file are passed via
+String prgFolderPath = `PRG_FOLDER;
+String hexFilePath   = prgFolderPath + `HEX_FILE;
+String cellResPath   = prgFolderPath + "cell_mem.hex";
+
 (* synthesize *)
 module mkTbPrgRun (Empty);
-
-    // ====================================================
-    // Global variables 
-    // ====================================================
-
-    // Constant variables in the program
-    // Folder and input file are passed via
-    String prgFolderPath = `PRG_FOLDER;
-    String hexFilePath   = prgFolderPath + `HEX_FILE;
-    String cellResPath   = prgFolderPath + "cell_mem.hex";
 
     // ====================================================
     // Test design 
     // ====================================================
 
     // BCpu design entity
-    BCpu_IFC mcpu <- mkBCpu;
+    BCpu_IFC mcpu <- mkBCpuInit(tagged Hex hexFilePath);
 
     // Memory with cell results
     BRAM_Configure cellMemResCfg = defaultValue;

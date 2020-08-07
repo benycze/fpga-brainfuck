@@ -14,6 +14,7 @@ import binst :: *;
 
 import BRAM  :: *;
 import FIFO  :: *;
+import FIFOF :: *;
 import ClientServer :: *;
 import Connectable  :: *;
 
@@ -46,7 +47,13 @@ interface BCpu_IFC;
 
 endinterface
 
-module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
+// Configuration stream typedef
+typedef union tagged {
+    BMemAddress     RegPc;      // New program counter
+    BData           RegCmd;     // New command register
+} BCoreWriteReq deriving (Bits, FShow);
+
+module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     
     // ------------------------------------------------------------------------
     // Registers & components 
@@ -71,9 +78,7 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
         // Instruction memory
     BRAM_Configure instCfg = defaultValue;
     instCfg.allowWriteResponseBypass = False;
-
-    if(instMemInitFile != "") 
-        instCfg.loadFormat = tagged Hex instMemInitFile;
+    instCfg.loadFormat = loadFormat;
 
     BRAM2Port#(BMemAddress,BData) instMem <- mkBRAM2Server(instCfg);  
 
@@ -88,13 +93,13 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
     FIFO#(BRAMRequest#(BMemAddress,BData)) instReq <- mkFIFO;
     
         // Helping registers
-    Reg#(BData)             outRegData      <- mkReg(0);       
-    Reg#(Bool)              dataDrained     <- mkReg(False);
-    Reg#(Maybe#(BData))     regSpaceRet     <- mkReg(tagged Invalid);
-    Reg#(Bool)              regCellRead     <- mkReg(False);
-    Reg#(Bool)              regInstRead     <- mkReg(False);
-    Reg#(Bool)              regRegRead      <- mkReg(False);
-    FIFO#(BData)            readRetData     <- mkFIFO;
+    Reg#(BData)                 outRegData      <- mkReg(0);       
+    Reg#(Bool)                  dataDrained     <- mkReg(False);
+    Reg#(Maybe#(BData))         regSpaceRet     <- mkReg(tagged Invalid);
+    Reg#(Bool)                  regCellRead     <- mkReg(False);
+    Reg#(Bool)                  regInstRead     <- mkReg(False);
+    Reg#(Bool)                  regRegRead      <- mkReg(False);
+    FIFO#(BData)                readRetData     <- mkFIFO;
 
     let readRunning = regCellRead || regInstRead || regRegRead;
 
@@ -104,6 +109,9 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
     // from the software will fail in that case.
     Reg#(Maybe#(BData))     outputBcoreData <- mkReg(tagged Invalid);
     Reg#(Maybe#(BData))     inputBCoreData  <- mkReg(tagged Invalid);
+
+
+    FIFOF#(BCoreWriteReq)   bcoreConfig <- mkFIFOF;
 
     // ------------------------------------------------------------------------
     // Rules 
@@ -159,11 +167,26 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
     endrule
 
     // Configure enable/disable signals to the BCore
-    (* descending_urgency = "write,put_bcore_config" *)
-    rule put_bcore_config; 
+    rule update_run_config; 
         // Take the value of the register (we will modify it)
         let tmpCmdReg = regCmd;
         let invalidOpcode = bCore.getInvalidOpcode();
+
+        // Update the configuration if we have something
+        // to do
+        if(bcoreConfig.notEmpty()) begin
+            // Take data and deque
+            let configData = bcoreConfig.first;
+            bcoreConfig.deq;
+
+            // Run the configuration
+            case (configData) matches
+                tagged RegPc .newPc     : bCore.setPC(newPc);
+                tagged RegCmd .newCmd   : tmpCmdReg = newCmd;
+                default : $display("Unknown command");
+            endcase
+        end // End enpty check
+
         // Enable the CPU
         if(invalidOpcode) begin
             // Invalid opcode has been detected, stop the operation
@@ -179,7 +202,7 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
         tmpCmdReg[bitStepEnabled] = tmpCmdReg[bitStepEnabled] & 0;
 
         // Write new command register
-        regCmd <= tmpCmdReg;
+        regCmd      <= tmpCmdReg;
     endrule
 
     rule drain_bcore_output_data (outputBcoreData matches tagged Invalid);
@@ -292,13 +315,13 @@ module mkBCpuInit#(parameter String instMemInitFile) (BCpu_IFC);
             regSpace  : begin
                 $display("BCpu write: Writing INTERNAL REGISTERS.");
                 case(reg_addr_slice)
-                   'h0 : regCmd         <= data;            
+                   'h0 : bcoreConfig.enq(tagged RegCmd data);            
                    'h1 : regWorkPcLsb   <= data;
                    'h2 : begin
                             // Setup new PC based on passed data
                             let tmpPc = {data,regWorkPcLsb};
                             let newPc = unpack(tmpPc[valueOf(BMemAddrWidth)-1:0]);
-                            bCore.setPC(newPc);
+                            bcoreConfig.enq(tagged RegPc newPc);
                         end
                     'h3: $display("This offset is allocated for flag registers which are read-only.");
                     'h4: inputBCoreData <= tagged Valid data;
@@ -327,7 +350,7 @@ endmodule : mkBCpuInit
 // Module without the inilization
 (* synthesize *)
 module mkBCpu(BCpu_IFC);
-    BCpu_IFC rIfc <- mkBCpuInit("");
+    BCpu_IFC rIfc <- mkBCpuInit(None);
     return rIfc;
 endmodule : mkBCpu
 
