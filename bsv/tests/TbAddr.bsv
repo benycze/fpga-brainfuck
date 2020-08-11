@@ -6,7 +6,7 @@
 //  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 // -------------------------------------------------------------------------------
 
-package Tb;
+package TbAddr;
 
 import bcpu :: *;
 import bpkg :: *;
@@ -118,4 +118,4 @@ module mkTbAddr (Empty);
 
 endmodule : mkTbAddr 
 
-endpackage : Tb
+endpackage : TbAddr

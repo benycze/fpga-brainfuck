@@ -6,7 +6,7 @@
 //  WEBSITE: https://github.com/benycze/fpga-brainfuck/
 // -------------------------------------------------------------------------------
 
-package Tb;
+package TbInst;
 
 import binst :: *;
 import StmtFSM  :: *;
@@ -72,4 +72,4 @@ module mkTbInst (Empty);
 
 endmodule : mkTbInst 
 
-endpackage : Tb
+endpackage : TbInst
