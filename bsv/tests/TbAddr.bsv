@@ -40,12 +40,12 @@ module mkTbAddr (Empty);
             let ret <- mcpu.getData();
             $displayh("Command register during the EN mode --> 0x",ret);
         endaction
+        $display("Disabling the unit ...");
         mcpu.write(getAddress(regSpace,0),'h0);
-        delay(2);
 
         $display("Try to write the step enabled and check if the  unit was enabled");
         mcpu.write(getAddress(regSpace,0),'h2);
-        delay(1);
+        delay(2);
         mcpu.read(getAddress(regSpace,0));
         action
             let ret <- mcpu.getData();

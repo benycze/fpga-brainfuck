@@ -13,7 +13,6 @@ import bcore :: *;
 import binst :: *;
 
 import BRAM  :: *;
-import FIFO  :: *;
 import FIFOF :: *;
 import ClientServer :: *;
 import Connectable  :: *;
@@ -89,8 +88,8 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     mkConnection(bCore.cell_ifc.portB,cellMem.portB);
     mkConnection(bCore.inst_ifc.portB,instMem.portB);
         // Port A is also used for the access form SW and CPU
-    FIFO#(BRAMRequest#(BMemAddress,BData)) cellReq <- mkFIFO;
-    FIFO#(BRAMRequest#(BMemAddress,BData)) instReq <- mkFIFO;
+    FIFOF#(BRAMRequest#(BMemAddress,BData)) cellReq <- mkFIFOF;
+    FIFOF#(BRAMRequest#(BMemAddress,BData)) instReq <- mkFIFOF;
     
         // Helping registers
     Reg#(BData)                 outRegData      <- mkReg(0);       
@@ -99,9 +98,12 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     Reg#(Bool)                  regCellRead     <- mkReg(False);
     Reg#(Bool)                  regInstRead     <- mkReg(False);
     Reg#(Bool)                  regRegRead      <- mkReg(False);
-    FIFO#(BData)                readRetData     <- mkFIFO;
+    FIFOF#(BData)               readRetData     <- mkFIFOF;
+    FIFOF#(BCoreWriteReq)       bcoreConfig     <- mkFIFOF;
+    Reg#(Bool)                  bcoreUpdate     <- mkReg(False);
 
-    let readRunning = regCellRead || regInstRead || regRegRead;
+    let readRunning  = regCellRead || regInstRead || regRegRead;
+    let writeRunning = !cellReq.notFull() || !instReq.notFull() || ! bcoreConfig.notFull();
 
     // Read / write registers because we don't want to block the read/write 
     // methods. Therefore, the input/outout FIFO fronts has 1 more available 
@@ -109,9 +111,6 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     // from the software will fail in that case.
     Reg#(Maybe#(BData))     outputBcoreData <- mkReg(tagged Invalid);
     Reg#(Maybe#(BData))     inputBCoreData  <- mkReg(tagged Invalid);
-
-
-    FIFOF#(BCoreWriteReq)   bcoreConfig <- mkFIFOF;
 
     // ------------------------------------------------------------------------
     // Rules 
@@ -166,26 +165,34 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         $display("BCpu: draining data from the register space");
     endrule
 
-    // Configure enable/disable signals to the BCore
-    rule update_run_config; 
+    // Drain and apply rules which can be taken immediatelly
+    // The content of the command register is interpreted in 
+    // the next rule.
+    (* descending_urgency = "drain_bcpu_config, apply_reg_cmd_config" *)
+    rule drain_bcpu_config;
+        // Update the configuration if we have something
+        // to do
+   
+        // Take data and deque
+        let configData = bcoreConfig.first;
+        bcoreConfig.deq;
+
+        // Run the configuration
+        case (configData) matches
+            tagged RegPc .newPc     : bCore.setPC(newPc);
+            tagged RegCmd .newCmd   : regCmd <= newCmd;
+            default : $display("Unknown command");
+        endcase
+
+        $display("BCpu: Configuration for the BCore was drained.");
+    endrule
+
+    // Configure enable/disable signals to the BCore based on the 
+    // command register
+    rule apply_reg_cmd_config; 
         // Take the value of the register (we will modify it)
         let tmpCmdReg = regCmd;
         let invalidOpcode = bCore.getInvalidOpcode();
-
-        // Update the configuration if we have something
-        // to do
-        if(bcoreConfig.notEmpty()) begin
-            // Take data and deque
-            let configData = bcoreConfig.first;
-            bcoreConfig.deq;
-
-            // Run the configuration
-            case (configData) matches
-                tagged RegPc .newPc     : bCore.setPC(newPc);
-                tagged RegCmd .newCmd   : tmpCmdReg = newCmd;
-                default : $display("Unknown command");
-            endcase
-        end // End enpty check
 
         // Enable the CPU
         if(invalidOpcode) begin
@@ -200,11 +207,8 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
 
         // Switch the stop off, if it was enabled (and with logical 0)
         tmpCmdReg[bitStepEnabled] = tmpCmdReg[bitStepEnabled] & 0;
-
         // Write new command register
         regCmd      <= tmpCmdReg;
-
-        $display("BCpu: Configuration of BCPU updated.");
     endrule
 
     rule drain_bcore_output_data (outputBcoreData matches tagged Invalid);
@@ -291,7 +295,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         return data;
     endmethod
 
-    method Action write(BAddr addr, BData data);
+    method Action write(BAddr addr, BData data);// if (!writeRunning);
 
         // Top level address decoder - two top-level bits are used
         // for indexing of the address space

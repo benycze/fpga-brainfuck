@@ -110,7 +110,8 @@ You can also handle the tested address space using the `--min-test-addr` and `--
 
 Braninfuck CPU is using the 16-bit address space. Reading from _Instruction_ and _Cell_
 memory is allowed if the CPU is not enabled. Reading from the register address space
-is allowed anytime.
+is allowed anytime. The design is pipelined and it takes ~3 clock cycles to read/write
+the BCPU.
 
 |   Address space       |    Coment                         |
 |-----------------------|-----------------------------------|
