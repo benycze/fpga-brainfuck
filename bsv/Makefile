@@ -48,11 +48,14 @@ vtest:
 	$(MAKE) -C tests vtest_all
 
 .PHONY: clean
-clean:
+clean:clean_compiled
+	$(MAKE) -C tests clean
+
+.PHONY: clean_compiled
+clean_compiled:
 	rm -rf build
 	rm -rf build_verilog
 	rm -rf tarball
-	$(MAKE) -C tests clean
 
 .PHONY: tarball
 # Blaclisted files are divided by , (comma)
@@ -76,12 +79,13 @@ tarball: vcompile
 .PHONY: help
 help:
 	@echo "This Makefile has following targets:"
-	@echo "* compile 	compiles the Bluespec simulation model"
-	@echo "* vcompile 	compiles the Verilog code"
-	@echo "* test		runs all tests using Bluespec simulator"
-	@echo "* vtest		runs all tests using Verilog simulation model"
-	@echo "* clean		clean everything" 
-	@echo "* tarball    create a package for translation"
+	@echo "* compile 			compiles the Bluespec simulation model"
+	@echo "* vcompile 			compiles the Verilog code"
+	@echo "* test				runs all tests using Bluespec simulator"
+	@echo "* vtest				runs all tests using Verilog simulation model"
+	@echo "* clean				clean everything" 
+	@echo "* clean_compiled		clean all compiled files"
+	@echo "* tarball    		create a package for translation"
 	@echo ""
 	@echo "The user can specify some additional parameters:"
 	@echo ""

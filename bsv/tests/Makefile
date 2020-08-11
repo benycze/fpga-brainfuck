@@ -121,7 +121,7 @@ cvsim_%: %.bsv
 
 # Run all available tests -------------------------------------------
 
-.PHONY: test_all vtest_prg test_prg vtest_all clean clean_exe clean_gen clean_log help
+.PHONY: test_all vtest_prg test_prg vtest_all clean clean_test clean_gen clean_log help 
 
 # Test targets - there are test which has the stand-alone testbenches and some
 # tests which are sharing the same testbench file (e.g. program tests). 
@@ -137,7 +137,7 @@ vtest_all: $(VTEST_TARGETS)
 vtest_prg:
 	$(foreach TEST,$(VTEST_PRGS), \
 		@echo "Starting test $(TEST) ... "; \
-		$(MAKE) clean_exe;\
+		$(MAKE) clean_test;\
 		$(MAKE) $(TEST))
 
 
@@ -149,17 +149,18 @@ test_all: $(TEST_TARGETS)
 test_prg:
 	$(foreach TEST,$(TEST_PRGS), \
 		@echo "Starting test $(TEST) ... "; \
-		$(MAKE) clean_exe;\
+		$(MAKE) clean_test;\
 		$(MAKE) $(TEST);)
 
 # Clean targets
-clean_exe:
+clean_test:
 	@echo "Cleaning simulator files ..."
 	rm -f *.so *.exe
+	$(MAKE) -C .. clean_compiled
 
 clean_gen:
 	@echo "Cleaning generated files ..."
-	@for f in $(shell ls data); do \
+	@for f in $(shell find data/* -maxdepth 1 -type d); do \
 	echo " * cleaning the $${f} folder"; \
 	rm -f data/$${f}/$${f}.mif data/$${f}/$${f}; \
 	done
@@ -167,13 +168,13 @@ clean_gen:
 clean_log:
 	rm -f $(TEST_LOG)
 
-clean: clean_exe clean_gen clean_log
+clean: clean_test clean_gen clean_log
 
 # Help target
 help:
 	@echo "Makefile targets:"
 	@echo "* clean - cleans everything"
-	@echo "* clean_exe - cleans all exe files"
+	@echo "* clean_test - cleans all test files"
 	@echo "* clean_gen - cleans all generated files"
 	@echo "* test_all - runs the test of all Bluespec simulation testbenches"
 	@echo "		targets --> $(TEST_TARGETS)"
