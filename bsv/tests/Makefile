@@ -156,6 +156,7 @@ test_prg:
 clean_test:
 	@echo "Cleaning simulator files ..."
 	rm -f *.so *.exe
+	@echo "Cleaning all generated files (just to be sure)"
 	$(MAKE) -C .. clean_compiled
 
 clean_gen:
