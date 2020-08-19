@@ -54,6 +54,7 @@ clean:clean_compiled
 .PHONY: clean_compiled
 clean_compiled:
 	rm -rf build
+	rm -rf simbuild
 	rm -rf build_verilog
 	rm -rf tarball
 
