@@ -142,7 +142,8 @@ Flag register structure:
 | 2                    | Output data FIFO is full                       |
 | 3                    | Invalid operation code has been detected       |
 | 4                    | Program is terminated                          |
-| 5 - 7                | Reserved - set to 0                            |
+| 5                    | BCpu is waiting for input                      |
+| 6 - 7                | Reserved - set to 0                            |
 
 ## Compilation of the Brainfuck code
 
