@@ -259,6 +259,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
                 // Prepare data there & send them
                 let pcVal    = bCore.getPC();
                 let flagData = {'0, 
+                    pack(bCore.waitingForInput()),
                     pack(bCore.getTermination()),
                     pack(bCore.getInvalidOpcode()),
                     pack(bCore.outputDataFull()),

@@ -48,6 +48,9 @@ interface BCore_IFC#(type typeAddr, type typeData);
     method Bool outputDataAvailable();
     method ActionValue#(typeData) outputDataGet();
     method Bool outputDataFull();
+    
+    // We are waiting for input
+    method Bool waitingForInput();
 
     // Invalid opcode detected
     method Bool getInvalidOpcode();
@@ -420,6 +423,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
     method Bool getTermination();
         return regProgTerminated;
+    endmethod
+
+    method Bool waitingForInput();
+        return waitForInput;
     endmethod
     
 endmodule : mkBCore
