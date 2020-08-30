@@ -118,25 +118,41 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
 
         // Rules for multiplexing of port A from SW and CORE
     rule drain_req_from_cell_fifo (!cmdEn);
+        $display("BCpu: Request drained from the SW, port A, cell memory, time ", $time);
         let data = cellReq.first;
         cellReq.deq;
         cellMem.portA.request.put(data);
     endrule
 
-    rule drain_req_from_cell_client;
+    rule drain_req_from_cell_client (cmdEn);
+        $display("BCpu: Request drained from the BCPU port A, cell memory, time ", $time);
         let data <- bCore.cell_ifc.portA.request.get();
         cellMem.portA.request.put(data);
     endrule
 
     rule drain_req_from_inst_fifo (!cmdEn);
+        $display("BCpu: Request drained from the SW, port A, inst memory, time ", $time);
         let data = instReq.first;
         instReq.deq;
         instMem.portA.request.put(data);
     endrule
     
-    rule drain_req_from_inst_client;
+    rule drain_req_from_inst_client (cmdEn);
+        $display("BCpu: Request drained from the BCPU port A, inst memory, time ", $time);
         let data <- bCore.inst_ifc.portA.request.get();
         instMem.portA.request.put(data);
+    endrule
+
+    rule put_inst_back_to_bcore (cmdEn);
+        $display("BCpu: Pushing the response back to BCPU, port A, inst memory, time ", $time);
+        let data <- instMem.portA.response.get;
+        bCore.inst_ifc.portA.response.put(data);
+    endrule
+
+    rule put_cell_back_to_bcore (cmdEn);
+        $display("BCpu: Pushing the reponse back to the BCPU, port A, cell memory, time ", $time);
+        let data <- cellMem.portA.response.get;
+        bCore.cell_ifc.portA.response.put(data);
     endrule
 
         // Rules for the selecttion of output data from internal registers
