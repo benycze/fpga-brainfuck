@@ -170,12 +170,18 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         if(stage3Inv) begin
             instMemPortAReq.wset(makeBRAMRequest(False, stage3Inv1Addr, 0));
             instMemPortBReq.wset(makeBRAMRequest(False, stage3Inv2Addr, 0));
+            $display("BCore: ST1 Stage 3 invalidation detected in instruction fetch stage in time ", $time);
+            $displayh("BCore ST1: Fetch addresses 0x", stage3Inv1Addr, " and 0x",stage3Inv2Addr);
         end else if(stage3AddrEn)begin
             instMemPortAReq.wset(makeBRAMRequest(False, stage1Addr, 0));
             instMemPortBReq.wset(makeBRAMRequest(False, stage2Addr, 0));
+            $display("BCore ST1: Stage 3 address writeback detected in instruction fetch stage in time ", $time);
+            $displayh("BCore ST1: Fetch addresses 0x", stage1Addr, " and 0x",stage2Addr);
         end else begin
             instMemPortAReq.wset(makeBRAMRequest(False, nonStage1Addr, 0));
             instMemPortBReq.wset(makeBRAMRequest(False, nonStage2Addr, 0)); 
+            $display("BCore ST1: Standard instruction fetch in in time ", $time);
+            $displayh("BCore ST1: Fetch addresses 0x", nonStage1Addr, " and 0x",nonStage2Addr);
         end
 
         // Increment the counter by 2 (instructions are 16 bit wide), we need to skip the 8-bit blocks
@@ -183,7 +189,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // the input/output processig
         if(!waitForInout)begin
             regPc <= regPc + 2; 
-            $display("BCore: Instruction fetch in time ",$time);
+            $display("BCore ST1: Instruction fetch register updated in time ", $time);
         end
     endrule
 
@@ -193,8 +199,8 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         let inst1Res = instMemPortARes.wget();
         let inst2Res = instMemPortBRes.wget();
 
-        if(!isValid(inst1Res) || !isValid(inst2Res)) $display("BCore: Not valid memory response in time ",$time);
-        if(isValid(inst1Res) && isValid(inst2Res))begin
+        if(isValid(inst1Res) && isValid(inst2Res)) begin
+            $display("BCore ST2: Instruction decode & fetch operation has been started.");
             // Unpack data from maybe    
             let inst1 = fromMaybe(?,inst1Res);
             let inst2 = fromMaybe(?,inst2Res);
@@ -210,64 +216,64 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             //  in the next stage but we will consume more bits.  
             BInst instruction = unpack({pack(inst1), pack(inst2)});
             if(!stage3Inv) begin
-                $display("BCore: Stage invalidation was asserted, keeping all default register values.");    
+                $display("BCore ST2: Stage invalidation was asserted, keeping all default register values.");    
             end else begin  
                 // Analyze the instrucion
                 let decInst = getInstruction(instruction);
                 case (decInst) matches
                     tagged I_Nop: begin 
-                        $display("BCore: No-operation was detected.");
+                        $display("BCore ST2: No-operation was detected.");
                     end
                     tagged I_DataPtrInc: begin 
-                        $display("BCore: Data pointer increment");
+                        $display("BCore ST2: Data pointer increment");
                         st3Dec.dataPtrInc = True;
                     end
                     tagged I_DataPtrDec: begin 
-                        $display("BCore: Data pointer decrement.");
+                        $display("BCore ST2: Data pointer decrement.");
                         st3Dec.dataPtrDec = True;
                     end
                     tagged I_DataInc: begin 
-                        $display("BCore: Increment data.");
+                        $display("BCore ST2: Increment data.");
                         st3Dec.dataInc = True;
                     end
                     tagged I_DataDec: begin 
-                        $display("BCore: Decrement data.");
+                        $display("BCore ST2: Decrement data.");
                         st3Dec.dataDec = True;
                     end
                     tagged I_SendOut: begin 
-                        $display("BCore: Send data to output.");
+                        $display("BCore ST2: Send data to output.");
                         st3Dec.takeOut = True;
                         // Stop processing if we cannot push to the output FIFO
                         if(!outDataFifo.notEmpty()) waitForOutput <= True;
                     end
                     tagged I_SaveIn: begin 
-                        $display("BCore: Take data from output.");
+                        $display("BCore ST2: Take data from output.");
                         st3Dec.takeIn = True;
                         //Stop processing if no input data are avaialble
                         if(!inDataFifo.notFull()) waitForInput <= True;
                     end
                     tagged I_JmpEnd { jmpVal : .jmpVal1 } : begin 
-                        $display("BCore: Jump-end instruction.");
+                        $display("BCore ST2: Jump-end instruction.");
                         st3Dec.jmpEnd = True;
                         st3Dec.jmpVal = jmpVal1;
                     end
                     tagged I_JmpBegin { jmpVal : .jmpVal1 } : begin 
-                        $display("BCore: Jump-begin instruction.");
+                        $display("BCore ST2: Jump-begin instruction.");
                         st3Dec.jmpBegin = True;
                         st3Dec.jmpVal   = jmpVal1;
                     end
                     tagged I_Terminate: begin
-                        $display("BCore: Program termination was detected.");
+                        $display("BCore ST2: Program termination was detected.");
                         st3Dec.prgTerminated = True;
                     end 
-                    default : $display("BCore: Unknown instruction was detected.");
+                    default : $display("BCore ST2: Unknown instruction was detected.");
                 endcase
             end
 
             // Write data to the next stage
             regDecCmd <= st3Dec;
         end
-        $display("BCore: Instruction decode and operands in time ",$time);
+        $display("BCore ST2: Instruction decode and operands in time ",$time);
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
@@ -308,13 +314,17 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         if(decInst.takeIn && inDataFifo.notEmpty()) begin 
             tmpCellAData = fromMaybe(0,inDataWire.wget());
         end else begin
-            $display("BCore: Unable to read from the input FIFO. No data available in time ",$time);
+            if(decInst.takeIn) begin
+                $display("BCore ST3: Unable to read from the input FIFO. No data available in time ",$time);
+            end
         end
 
         if(decInst.takeOut && outDataFifo.notFull()) begin
             outDataWire.wset(tmpCellAData);
         end else begin
-            $display("BCore: Unable to write to the output FIFO. Memory is full in time ",$time);
+            if(decInst.takeOut)begin
+                $display("BCore ST3: Unable to write to the output FIFO. Memory is full in time ",$time);
+            end
         end
 
             // Jumps - in this case we need to prepare the new address values (we have to count with the value
@@ -340,7 +350,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
         // Terminate the program
         regProgTerminated <= decInst.prgTerminated;
-        $display("BCore: Write-back executed in time ",$time);
+        $display("BCore ST3: Write-back executed in time ",$time);
     endrule
 
     // Helping rules to send data out if we are not waiting for data.
