@@ -183,7 +183,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // the input/output processig
         if(!waitForInout)begin
             regPc <= regPc + 2; 
-            $display("BCore: instruction fetch in time ",$time);
+            $display("BCore: Instruction fetch in time ",$time);
         end
     endrule
 
@@ -267,7 +267,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Write data to the next stage
             regDecCmd <= st3Dec;
         end
-        $display("BCore: instruction decode and operands in time ",$time);
+        $display("BCore: Instruction decode and operands in time ",$time);
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)

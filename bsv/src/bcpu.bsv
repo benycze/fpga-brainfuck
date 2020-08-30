@@ -148,21 +148,21 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         let ret_data <- cellMem.portA.response.get; 
         readRetData.enq(ret_data);
         regCellRead <= False;
-        $display("BCpu: draining data from cell memory (during non-operational mode).");
+        $display("BCpu: Draining data from cell memory (during non-operational mode).");
     endrule
 
     rule drain_data_from_instruction_memory_app(!cmdEn && regInstRead);
         let ret_data <- instMem.portA.response.get;
         readRetData.enq(ret_data);
         regInstRead <= False;
-        $display("BCpu: draining data from instruction memory (during non-operational mode).");
+        $display("BCpu: Draining data from instruction memory (during non-operational mode).");
     endrule
 
     rule drain_reg (regSpaceRet matches tagged Valid .data &&& regRegRead);
         readRetData.enq(data);
         regSpaceRet <= tagged Invalid;
         regRegRead  <= False;
-        $display("BCpu: draining data from the register space");
+        $display("BCpu: Draining data from the register space");
     endrule
 
     // Drain and apply rules which can be taken immediatelly
@@ -284,8 +284,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
             end
         endcase
 
-        $display("Time = ",$time);
-        $displayh("* BCpu read: Read method fired on address 0x",addr);
+        $displayh("BCpu read: Read method fired on address 0x",addr);
     endmethod
 
     method ActionValue#(BData) getData();
@@ -340,8 +339,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
             end
         endcase
 
-        $display("Time = ",$time);
-        $displayh("* BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
+        $displayh("BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
     endmethod
 
     method Bool getReadRunning();
