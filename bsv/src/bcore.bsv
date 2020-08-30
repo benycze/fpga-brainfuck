@@ -110,13 +110,15 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     RWire#(typeData)                         instMemPortBRes <- mkRWire;
 
     // Helping wires between pipe stages
-    PulseWire       stage3AddrEn    <- mkPulseWire;
+    Wire#(Bool)     stage3AddrEn    <- mkDWire(False);
     Wire#(typeAddr) stage3Addr      <- mkDWire(0);
-    PulseWire       stage3Inv       <- mkPulseWire;
+    Wire#(Bool)     stage3Inv       <- mkDWire(False);
 
     // Next stage registers - data/signals for the third stage
-    Reg#(typeData)  st3Inst2Reg     <- mkReg(0);
-    Reg#(RegCmdSt)  regDecCmd       <- mkReg(defaultValue);
+    Reg#(typeData)     st3Inst2Reg  <- mkReg(0);
+    Reg#(RegCmdSt)     regDecCmd    <- mkReg(defaultValue);
+    RWire#(RegCmdSt)   st2DecCmd    <- mkRWire;
+    RWire#(RegCmdSt)   st3DecCmd    <- mkRWire;
 
     // ----------------------------------------------------
     // Rules & folks
@@ -148,11 +150,14 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // the previous stage (we can do it just in the case that we have some instruction which needs to use the 
     // currenly written value but we will do it like that to have a simpler HW).
 
+    // Pipeline is enabled when no stalls are there
+    let pipeEnabled = regCoreEnabled && !waitForInout && !regProgTerminated;
+
     // Tell to the BSC compiler that pipeline rules can fire together in the same cycle
-    (* conflict_free = "instruction_fetch,instruction_decode_and_operands,execution_and_writeback" *)
+    (* conflict_free = "st1_instruction_fetch, st2_instruction_decode_and_operands, st3_execution_and_writeback" *)
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule instruction_fetch (regCoreEnabled && !regProgTerminated);
+    rule st1_instruction_fetch (pipeEnabled);
         // In this stage, we have to read the address from the 
         // register or we have to take the value from the stage 3.
             // Prepare parallel values for stages
@@ -194,7 +199,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule instruction_decode_and_operands (regCoreEnabled && !waitForInout && !regProgTerminated);
+    rule st2_instruction_decode_and_operands (pipeEnabled);
         // Take the data from the BRAM
         let inst1Res = instMemPortARes.wget();
         let inst2Res = instMemPortBRes.wget();
@@ -215,7 +220,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Star the decoding and setting of bit flags. This allows faster HW (1 bit comparator)
             //  in the next stage but we will consume more bits.  
             BInst instruction = unpack({pack(inst1), pack(inst2)});
-            if(!stage3Inv) begin
+            if(stage3Inv) begin
                 $display("BCore ST2: Stage invalidation was asserted, keeping all default register values.");    
             end else begin  
                 // Analyze the instrucion
@@ -271,15 +276,34 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             end
 
             // Write data to the next stage
-            regDecCmd <= st3Dec;
+            st2DecCmd.wset(st3Dec);
         end
         $display("BCore ST2: Instruction decode and operands in time ",$time);
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule execution_and_writeback (regCoreEnabled && !waitForInout && !regProgTerminated);
+    rule st2_to_st3_pipe;
+        // Read data from the pipe register, store data from the
+        // stage 2 and pass data to stage 3
+        let st2Data = st2DecCmd.wget();
+
+        if(isValid(st2Data))begin
+            let unpackSt2data   = fromMaybe(?,st2Data);
+            let regData         = regDecCmd;
+            
+            regDecCmd   <= unpackSt2data;
+            st3DecCmd.wset(regData);
+            $display("BCore : st2 to st3 data passing in time ", $time);
+        end else begin
+            st3DecCmd.wset(defaultValue);
+            $display("BCore: st2 to st3 not valid request, using the default value in time ", $time);
+        end
+    endrule
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule st3_execution_and_writeback (pipeEnabled);
         // Get data from the previous stage
-        let decInst     = regDecCmd;
+        let decInstRes  = st3DecCmd.wget();
         let tmpCellARes = cellMemPortARes.wget();
         let tmpCellAddr = regCell; 
 
@@ -295,61 +319,87 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // We will invalidate data iff we are moving the pointer
         // or we have a jump instruction. Any inc/dec operations are
         // fine because we have a right data from temporal register
-        if(decInst.dataPtrInc || decInst.dataPtrDec || decInst.jmpEnd || decInst.jmpBegin) 
-            stage3Inv.send();
+        if(isValid(decInstRes)) begin
+            $display("BCore ST3: Execution valid instruction in time ", $time);
+            let decInst = fromMaybe(?, decInstRes);  
 
-        // Run actions -- we will have a lot of IF statements here
-
-            // Cell address - data are written to the BRAM iff we have detected the address change
-        if(decInst.dataPtrInc || decInst.dataPtrDec) cellMemPortBReq.wset(makeBRAMRequest(True, regCell, tmpCellAData));
-        if(decInst.dataPtrInc) tmpCellAddr = tmpCellAddr + 1;
-        if(decInst.dataPtrDec) tmpCellAddr = tmpCellAddr - 1;
-
-            // Cell value - we don't need to do any write-back to BRAM because we can remember the value and write it back
-            // int the case of the pointer update. 
-        if(decInst.dataInc) tmpCellAData = tmpCellAData + 1; 
-        if(decInst.dataDec) tmpCellAData = tmpCellAData - 1;
-                
-            // Input/output to/from the cell
-        if(decInst.takeIn && inDataFifo.notEmpty()) begin 
-            tmpCellAData = fromMaybe(0,inDataWire.wget());
-        end else begin
-            if(decInst.takeIn) begin
-                $display("BCore ST3: Unable to read from the input FIFO. No data available in time ",$time);
+            if(decInst.dataPtrInc || decInst.dataPtrDec || decInst.jmpEnd || decInst.jmpBegin) begin
+                stage3Inv <= True;
+                $display("BCore ST3: Stage 3 invalidation was detected, sending up.");
             end
-        end
 
-        if(decInst.takeOut && outDataFifo.notFull()) begin
-            outDataWire.wset(tmpCellAData);
-        end else begin
-            if(decInst.takeOut)begin
-                $display("BCore ST3: Unable to write to the output FIFO. Memory is full in time ",$time);
+            // Run actions -- we will have a lot of IF statements here
+
+                // Cell address - data are written to the BRAM iff we have detected the address change
+            if(decInst.dataPtrInc || decInst.dataPtrDec) begin
+                cellMemPortBReq.wset(makeBRAMRequest(True, regCell, tmpCellAData));
+                $display("BCore ST3: Stage 3 data change, writeback to BRAM.");
+            end 
+
+            if(decInst.dataPtrInc) begin
+                tmpCellAddr = tmpCellAddr + 1;
+                $display("BCore ST3: Stage 3 cell memory increment.");
             end
+
+            if(decInst.dataPtrDec) begin 
+                tmpCellAddr = tmpCellAddr - 1;
+                $display("BCore ST3: Stage 3 cell memory decrement.");
+            end
+
+                // Cell value - we don't need to do any write-back to BRAM because we can remember the value and write it back
+                // int the case of the pointer update. 
+            if(decInst.dataInc)begin
+                tmpCellAData = tmpCellAData + 1; 
+                $display("BCore ST3: Stage 3 cell memory data increment.");
+            end
+
+            if(decInst.dataDec) begin
+                tmpCellAData = tmpCellAData - 1;
+                $display("BCore ST3: Stage 3 cell memory data decrement.");
+            end
+                    
+                // Input/output to/from the cell
+            if(decInst.takeIn && inDataFifo.notEmpty()) begin 
+                tmpCellAData = fromMaybe(0,inDataWire.wget());
+            end else begin
+                if(decInst.takeIn) begin
+                    $display("BCore ST3: Unable to read from the input FIFO. No data available in time ",$time);
+                end
+            end
+
+            if(decInst.takeOut && outDataFifo.notFull()) begin
+                outDataWire.wset(tmpCellAData);
+            end else begin
+                if(decInst.takeOut)begin
+                    $display("BCore ST3: Unable to write to the output FIFO. Memory is full in time ",$time);
+                end
+            end
+
+                // Jumps - in this case we need to prepare the new address values (we have to count with the value
+                // in the first stage.
+                //
+                // Conver to bits, extend to the address and unpack. We have to send the address invalidation command
+                // to the first stage to work with the right instruction in the next clock cycle.
+            typeAddr jmpVal = unpack(extend(pack(decInst.jmpVal)));
+            let jmpAhead = regPc - 2 - jmpVal;
+            let jmpBack  = regPc - 2 + jmpVal;
+                // Ahead jump is the default one
+            if(decInst.jmpEnd && (tmpCellAData == 0)) begin
+                let jmpSel = jmpAhead;
+                stage3AddrEn <= True;
+            end else if(decInst.jmpBegin && (tmpCellAData != 0)) begin
+                stage3Addr <= jmpBack;
+                stage3AddrEn <= True;
+            end
+
+            // Write-back to the registers
+            regCellData <= tagged Valid tmpCellAData;
+            regCell     <= tmpCellAddr;
+
+            // Terminate the program
+            regProgTerminated <= decInst.prgTerminated;
         end
 
-            // Jumps - in this case we need to prepare the new address values (we have to count with the value
-            // in the first stage.
-            //
-            // Conver to bits, extend to the address and unpack. We have to send the address invalidation command
-            // to the first stage to work with the right instruction in the next clock cycle.
-        typeAddr jmpVal = unpack(extend(pack(decInst.jmpVal)));
-        let jmpAhead = regPc - 2 - jmpVal;
-        let jmpBack  = regPc - 2 + jmpVal;
-            // Ahead jump is the default one
-        if(decInst.jmpEnd && (tmpCellAData == 0)) begin
-            let jmpSel = jmpAhead;
-            stage3AddrEn.send();
-        end else if(decInst.jmpBegin && (tmpCellAData != 0)) begin
-            stage3Addr <= jmpBack;
-            stage3AddrEn.send();
-        end
-
-        // Write-back to the registers
-        regCellData <= tagged Valid tmpCellAData;
-        regCell     <= tmpCellAddr;
-
-        // Terminate the program
-        regProgTerminated <= decInst.prgTerminated;
         $display("BCore ST3: Write-back executed in time ",$time);
     endrule
 
