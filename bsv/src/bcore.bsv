@@ -296,7 +296,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             $display("BCore : st2 to st3 data passing in time ", $time);
         end else begin
             st3DecCmd.wset(defaultValue);
-            $display("BCore: st2 to st3 not valid request, using the default value in time ", $time);
+            //$display("BCore: st2 to st3 not valid request, using the default value in time ", $time);
         end
     endrule
 
@@ -437,7 +437,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
     method Action setEnabled(Bool enabled);
         regCoreEnabled      <= enabled;
-        $display("BCore : Setting the enable signal = ", enabled);
+        //$display("BCore : Setting the enable signal = ", enabled);
     endmethod
 
     method typeAddr getPC();
