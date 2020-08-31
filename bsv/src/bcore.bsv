@@ -151,7 +151,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // currenly written value but we will do it like that to have a simpler HW).
 
     // Pipeline is enabled when no stalls are there
-    let pipeEnabled = regCoreEnabled && !waitForInout && !regProgTerminated;
+    let pipeEnabled = regCoreEnabled && !waitForInout && !regProgTerminated && !regInvalid;
 
     // Tell to the BSC compiler that pipeline rules can fire together in the same cycle
     (* conflict_free = "st1_instruction_fetch, st2_instruction_decode_and_operands, st3_execution_and_writeback" *)

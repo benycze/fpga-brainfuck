@@ -208,13 +208,8 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     rule apply_reg_cmd_config; 
         // Take the value of the register (we will modify it)
         let tmpCmdReg = regCmd;
-        let invalidOpcode = bCore.getInvalidOpcode();
-
-        // Enable the CPU
-        if(invalidOpcode) begin
-            // Invalid opcode has been detected, stop the operation
-            bCore.setEnabled(False);
-        end else if(stepEn || cmdEn)  begin
+ 
+        if(stepEn || cmdEn)  begin
             // Enable the CPU, switch the step off
             bCore.setEnabled(True);
         end else begin
