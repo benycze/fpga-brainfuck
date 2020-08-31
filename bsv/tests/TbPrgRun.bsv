@@ -159,6 +159,9 @@ module mkTbPrgRun (Empty);
             endseq
         endseq
 
+        // Disable the BCPU
+        mcpu.write(getAddress(regSpace,'h0), 'h0);
+
         // Add the checking logic here, that is:
         //  * Make request to bcpu and internal memory
         //  * get data from both 
