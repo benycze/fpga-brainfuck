@@ -397,7 +397,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             regCell     <= tmpCellAddr;
 
             // Terminate the program
-            regProgTerminated <= decInst.prgTerminated;
+            if(decInst.prgTerminated)begin
+                regProgTerminated <= True;
+                $display("BCore ST3: Program termination was detected.");
+            end
         end
 
         $display("BCore ST3: Write-back executed in time ",$time);
@@ -434,7 +437,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
     method Action setEnabled(Bool enabled);
         regCoreEnabled      <= enabled;
-        regProgTerminated   <= False;
+        $display("BCore : Setting the enable signal = ", enabled);
     endmethod
 
     method typeAddr getPC();
