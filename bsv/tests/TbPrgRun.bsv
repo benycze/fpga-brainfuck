@@ -128,6 +128,15 @@ module mkTbPrgRun (Empty);
         $display("========================================");
         delay(10);
 
+        // Initialize cell memory to zeros
+        $display("Checking the cell memory result =========");
+        for(idx <= 0; idx < fromInteger(2 ** valueOf(BMemAddrWidth)); idx <= idx + 1)seq
+            action // Make the request to both memory blocks
+                mcpu.write(getAddress(cellSpace, truncate(pack(idx))), 'h0);
+            endaction
+        endseq
+
+        $display("Starting the program ====================");
         // Enable the BCPU
         mcpu.write(getAddress(regSpace,'h0), 'h1);
         delay(2);
@@ -166,6 +175,7 @@ module mkTbPrgRun (Empty);
         //  * Make request to bcpu and internal memory
         //  * get data from both 
         //  * check the result
+        $display("Checking the cell memory result =========");
         for(idx <= 0; idx < fromInteger(2 ** valueOf(BMemAddrWidth)); idx <= idx + 1)seq
             action // Make the request to both memory blocks
                 let rdAddress = getAddress(cellSpace, truncate(pack(idx)));
