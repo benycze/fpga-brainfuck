@@ -348,7 +348,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         $display("BCore ST3: Execution valid instruction in time ", $time);
 
         // Cell address - data are written to the BRAM iff we have detected the address change
-        if(decInst.dataPtrInc || decInst.dataPtrDec) begin
+        if(decInst.dataPtrInc || decInst.dataPtrDec || decInst.prgTerminated) begin
             cellMemPortBReq.wset(makeBRAMRequest(True, regCell, tmpCellAData));
             $display("BCore ST3: Stage 3 data change, writeback to BRAM.");
         end 
@@ -399,7 +399,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // Terminate the program
         if(decInst.prgTerminated)begin
             regProgTerminated <= True;
-            $display("BCore ST3: Program termination was detected.");
+            $display("BCore ST3: Program termination was detected, writing data back to memory.");
         end
 
         $display("BCore ST3: Write-back executed in time ",$time);
