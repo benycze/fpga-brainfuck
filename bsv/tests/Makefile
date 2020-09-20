@@ -84,6 +84,12 @@ vsim_TbPtrDec: b_TbPtrDec TbPrgRun.bsv cvsim_TbPrgRun
 b_TbPtrDec: data/ptr_dec/ptr_dec.hex
 	$(eval BSC_ARGS += -D HEX_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
 
+.PHONY: sim_TbPtrInc2 vsim_TbPtrInc2 b_TbPtrInc2
+sim_TbPtrInc2:  b_TbPtrInc2 TbPrgRun.bsv csim_TbPrgRun
+vsim_TbPtrInc2:  b_TbPtrInc2 TbPrgRun.bsv cvsim_TbPrgRun
+b_TbPtrInc2: data/ptr_inc2/ptr_inc2.hex
+	$(eval BSC_ARGS += -D HEX_FILE=\"$(notdir $<)\" -D PRG_FOLDER=\"$(dir $<)\")
+
 # General bluespec targets ---------------------------------------------
 
 # Brainfuck compiler and general target for the program translation
@@ -131,7 +137,7 @@ cvsim_%: %.bsv
 
 # Test target variables
 VTEST_TARGETS=vsim_TbAddr vsim_TbInst vtest_prg
-VTEST_PRGS=vsim_TbPtrInc vsim_TbMorePtrInc vsim_TbPtrDec
+VTEST_PRGS=vsim_TbPtrInc vsim_TbMorePtrInc vsim_TbPtrDec vsim_TbPtrInc2
 
 vtest_all: $(VTEST_TARGETS)
 vtest_prg:
@@ -143,7 +149,7 @@ vtest_prg:
 
 # Test variables
 TEST_TARGETS=sim_TbAddr sim_TbInst test_prg 
-TEST_PRGS=sim_TbPtrInc sim_TbMorePtrInc sim_TbPtrDec
+TEST_PRGS=sim_TbPtrInc sim_TbMorePtrInc sim_TbPtrDec sim_TbPtrInc2
 
 test_all: $(TEST_TARGETS)
 test_prg:
