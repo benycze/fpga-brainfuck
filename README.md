@@ -32,7 +32,7 @@ The project contains following folders:
 
 The address space is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw).
 
-## How to translate the code
+## FPGA project
 
 Details of the FPGA part is [here](https://github.com/benycze/fpga-brainfuck/tree/master/board).
 
@@ -48,4 +48,66 @@ from Intel. The provided build system takes care of everything - translation of 
 
 ## How to translate and upload the code
 
-TODO
+This task consists of two subtasks:
+
+1. Translation of the FPGA design (details are mentioned above but I will repeat it here ;) )
+2. Translation of the Brainfuck code
+
+So, lets start with it :-)
+
+### Design translation
+
+Synthesis script works automatically and therefore you can easily translate the BSV code and upload a bitstream into the FPGA.
+To achieve this, you need to do following steps:
+
+```bash
+cd board
+make # To translate the code
+```
+
+The code should be translated now and you can upload it to you development kit using the standard Quartus way (double click on the
+*Program Device (Open Programmer)*, select your device and upload the translated *sof* file (`board/output_files/fpga-brainfuck.sof`)).
+
+Alternatively, you can use the `make run` command to translate the code and configure it into the FPGA in the single step.
+The device indes is *1* by default and you can control it via a parameter passed to the make command.
+For intance, if you want to use a device number *2* you can run the following command:
+
+```bash
+make run DEVICE=2
+```
+
+You can use the `quartus_pgm -l` command to get the index of your JTAG device. The output of the tool is like this
+(you can also see that the index of my JTAG device is *1*):
+
+```
+user@machine $ quartus_pgm -l
+
+Info: *******************************************************************
+Info: Running Quartus Prime Programmer
+    Info: Version 19.1.0 Build 670 09/22/2019 SJ Lite Edition
+    Info: Copyright (C) 2019  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel FPGA IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Intel and sold by Intel or its authorized distributors.  Please
+    Info: refer to the applicable agreement for further details, at
+    Info: https://fpgasoftware.intel.com/eula.
+    Info: Processing started: Sun Sep 20 16:27:16 2020
+Info: Command: quartus_pgm -l
+1) Arrow-USB-Blaster [AR2FWBPS]
+Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings
+    Info: Peak virtual memory: 429 megabytes
+    Info: Processing ended: Sun Sep 20 16:27:16 2020
+    Info: Elapsed time: 00:00:00
+```
+
+### Brainfuck code translation
+
+TODO - describe the code translation and upload process here
