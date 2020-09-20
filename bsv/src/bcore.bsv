@@ -72,7 +72,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // For the extend inside the execution_and_writeback rule == the sum of the data length and
     // parameter a__ (from the evaluation) has to be equal to the address length. 12 bit is the 
     // length of the jump value
-    Add#(0,n_typeData,BDataWidth), Add#(a__, 12, n_typeAddr)
+    Add#(0,n_typeData,BDataWidth), Add#(a__, 12, n_typeAddr),
+    // We need to be able to print memory responses
+    FShow#(Maybe#(typeData))
 );
 
     // ----------------------------------------------------
@@ -217,7 +219,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
             // Make the read request for the current cell value (to prepare it
             // for the next stage)
-            cellMemPortAReq.wset(makeBRAMRequest(False,regCell,0));
+            let read_addr = regCell;
+            cellMemPortAReq.wset(makeBRAMRequest(False,read_addr,0));
+            $displayh("BCore ST2: Sending read request to BRAM address 0x",read_addr);
 
             // Star the decoding and setting of bit flags. This allows faster HW (1 bit comparator)
             //  in the next stage but we will consume more bits.  
@@ -336,10 +340,12 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // If yes, we will store data. If no, we will store
         // data from the register.
         let tmpCellAData = fromMaybe(0, tmpCellARes); // Default value
+        $display(fshow(tmpCellARes));
         if(isValid(regCellData)) begin
             // Unpack data from the maybe
             tmpCellAData = fromMaybe(0, regCellData);
         end
+        $displayh("BCore ST3: Current cell data value is 0x",tmpCellAData);
 
         // We will invalidate data iff we are moving the pointer
         // or we have a jump instruction. Any inc/dec operations are
@@ -348,36 +354,42 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         $display("BCore ST3: Execution valid instruction in time ", $time);
 
         // Cell address - data are written to the BRAM iff we have detected the address change
+        let wb_done = False;
         if(decInst.dataPtrInc || decInst.dataPtrDec || decInst.prgTerminated) begin
             cellMemPortBReq.wset(makeBRAMRequest(True, regCell, tmpCellAData));
-            $display("BCore ST3: Stage 3 data change, writeback to BRAM.");
+            $displayh("BCore ST3: Stage 3 data change, writeback to BRAM: address = 0x", regCell, ", data = 0x",tmpCellAData);
+            wb_done = True;
         end 
 
         if(decInst.dataPtrInc) begin
             tmpCellAddr = tmpCellAddr + 1;
-            $display("BCore ST3: Stage 3 cell memory increment.");
+            $displayh("BCore ST3: Stage 3 cell memory increment. New value = 0x", tmpCellAddr);
         end
 
         if(decInst.dataPtrDec) begin 
             tmpCellAddr = tmpCellAddr - 1;
-            $display("BCore ST3: Stage 3 cell memory decrement.");
+            $displayh("BCore ST3: Stage 3 cell memory decrement. New value = 0x", tmpCellAddr);
         end
 
         // Cell value - we don't need to do any write-back to BRAM because we can remember the value and write it back
         // int the case of the pointer update. 
+        let wb_reg = False;
         if(decInst.dataInc)begin
             tmpCellAData = tmpCellAData + 1; 
-            $display("BCore ST3: Stage 3 cell memory data increment.");
+            $displayh("BCore ST3: Stage 3 cell memory data increment. New value = 0x", tmpCellAData);
+            wb_reg = True;
         end
 
         if(decInst.dataDec) begin
             tmpCellAData = tmpCellAData - 1;
-            $display("BCore ST3: Stage 3 cell memory data decrement.");
+            $displayh("BCore ST3: Stage 3 cell memory data decrement. New value = 0x", tmpCellAData);
+            wb_reg = True;
         end
                 
         // Input/output to/from the cell
         if(decInst.takeIn) begin 
             tmpCellAData = inputData;
+            $displayh("BCore ST3: Reading data from input FIFO. Value = 0x", tmpCellAData);
         end else begin
             if(decInst.takeIn) begin
                 $display("BCore ST3: Unable to read from the input FIFO. No data available in time ",$time);
@@ -386,6 +398,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
         if(decInst.takeOut) begin
             outDataWire.wset(tmpCellAData);
+            $displayh("BCore ST3: Writing data to output FIFO. Value = 0x", tmpCellAData);
         end else begin
             if(decInst.takeOut)begin
                 $display("BCore ST3: Unable to write to the output FIFO. Memory is full in time ",$time);
@@ -393,8 +406,14 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         end
 
         // Write-back to the registers
-        regCellData <= tagged Valid tmpCellAData;
         regCell     <= tmpCellAddr;
+        if(wb_done) begin
+            regCellData <= tagged Invalid;
+            $display("BCore ST3: Invalidating register data, need to fetch a fresh data.");
+        end else if(wb_reg) begin
+            regCellData <= tagged Valid tmpCellAData;
+            $display("BCore ST3: Storing new data into the cell data register.");
+        end
 
         // Terminate the program
         if(decInst.prgTerminated)begin
