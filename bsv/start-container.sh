@@ -23,6 +23,7 @@ DOCKER_BIN=/usr/bin/docker
 function print_usage {
     echo "The script has following commands:"
     echo "-t or --translate     => run the translation, output will be in the tarball folder"
+    echo "-s or --tests         => run all"
     echo "-h or --help          => prints the HELP"
     echo ""
     echo "The interactive mode is started if you don't pass any argument."
@@ -40,11 +41,12 @@ function start_docker {
     ${DOCKER_BIN} run --rm -t -i \
         --mount=type=bind,source=${MNT_PATH},destination=${MNT_WDIR} \
         --mount=type=bind,source=${COMPILER_PATH},destination=${COMPILER_WDIR} \
-        --workdir=${MNT_WDIR} localhost/bsc-compiler $1
+        --workdir=${MNT_WDIR} localhost/bsc-compiler $*
 }
 
 # Parse arguments ----------------------------------------------------------------
 translate_only=0
+run_tests=0
 
 while [ "$1" != "" ]; do
     case "$1" in
@@ -57,6 +59,10 @@ while [ "$1" != "" ]; do
             exit 0
             ;;
 
+        "-s" | "--tests")
+            run_tests=1
+            ;;
+
         *)  echo -n "Unknown parameter!!\n"
             print_usage
             exit 1
@@ -67,9 +73,21 @@ done
 
 # Run the code ------------------------------------------------------------------
 if [ $translate_only -eq 1 ];then
-    start_docker "make tarball"
+    # Check if the bsc compiler exists. We will run it inside
+    # the docker if the bsc command is not available
+    if ! command -v bsc &> /dev/null; then
+        echo -e "BSC command not available, using the docker image ...\n\n"
+        start_docker "make tarball"
+    else
+        echo -e "BSC command available, using the system version ...\n\n"
+        make tarball
+    fi
 else
-    start_docker bash
+    if [ $run_tests -eq 1 ]; then
+        start_docker make test vtest
+    else
+        start_docker bash
+    fi
 fi
 
 exit 0

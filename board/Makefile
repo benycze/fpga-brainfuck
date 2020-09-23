@@ -23,9 +23,11 @@ BCPU_DIRS = $(shell find $(BCPU_PROJECT_PATH) -type d)
 BCPU_FILES = $(shell find $(BCPU_PROJECT_PATH) -type f -name '*')
 
 # Targets which are not creating any files
-.PHONY: compile project clean run
+.PHONY: compile compile_only project clean run
 
-compile: project
+compile: project compile_only
+
+compile_only:
 	quartus_sh --flow compile $(PROJECT_NAME)
 
 project: $(PROJECT_NAME).qpf
