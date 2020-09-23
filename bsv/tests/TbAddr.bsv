@@ -85,7 +85,7 @@ module mkTbAddr (Empty);
         $display("Testing read/write to cell memory ...");
         for(idx <= 0; idx < 255; idx <= idx + 1) seq
             action 
-                $display("Write to BRAM started in time ",$time);
+                //$display("Write to BRAM started in time ",$time);
                 BAddr addr = truncate(pack(idx));
                 BData data = truncate(pack(idx));
                 data_reg0 <= data;
@@ -94,7 +94,7 @@ module mkTbAddr (Empty);
             endaction
 
             action 
-                $display("Read request started in time ",$time);
+                //$display("Read request started in time ",$time);
                 let ret     <- mcpu.read(addr_reg0);
                 // Store reference data to the next cycle
                 data_reg1 <= data_reg0;
