@@ -17,7 +17,7 @@ services:
 # Prepare the docker image in installation stage
 install:
     - git clone https://github.com/benycze/bsc-docker-container.git 
-    - cd bsc-docker-container && bash bootstrap.sh > /dev/null && docker build -t localhost/bsc-compiler --build-arg BJOBS=2 . > /dev/null && cd ..
+    - cd bsc-docker-container && bash bootstrap.sh && docker build -t localhost/bsc-compiler --build-arg BJOBS=2 . && cd ..
 
 script:
     - cd bsv/ && ./start-container.sh -s 

@@ -340,7 +340,6 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // If yes, we will store data. If no, we will store
         // data from the register.
         let tmpCellAData = fromMaybe(0, tmpCellARes); // Default value
-        $display(fshow(tmpCellARes));
         if(isValid(regCellData)) begin
             // Unpack data from the maybe
             tmpCellAData = fromMaybe(0, regCellData);
