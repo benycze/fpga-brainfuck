@@ -12,8 +12,9 @@ BUILD_BSIM_FOLDER = ../build
 BUILD_VERILOG_FOLDER = ../build_verilog
 BCPU_SRC = ../src
 
-# Test rusult log
+# Test rusult log & translation log
 TEST_LOG=TEST_RESULT.log
+LOG_FILE=BSV-TRANSLATION.log
 
 include ../Common_Inc.mk
 
@@ -111,8 +112,8 @@ csim_%: %.bsv
 	@echo "Translating the sources (BSC)..."
 	$(MAKE) -C .. compile
 	@echo "INFO: linking bsc-compiled objects into Bluesim executable"
-	bsc -u -elab -sim $(BSC_ARGS) $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $<
-	bsc -sim -parallel-sim-link 4 $(BSC_ARGS) -e mk$* -o ./$@.exe $(BSC_C_FLAGS) 
+	bsc -u -elab -sim $(BSC_ARGS) $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $<  > $(LOG_FILE) 2>&1 
+	bsc -sim -parallel-sim-link 4 $(BSC_ARGS) -e mk$* -o ./$@.exe $(BSC_C_FLAGS) > $(LOG_FILE) 2>&1 
 	@echo "Running the simulation (Bluespec) ..."
 	$(call run_and_check, $@.exe )
 
@@ -120,8 +121,8 @@ cvsim_%: %.bsv
 	@echo "Translating the sources (BSC) ..."
 	$(MAKE) -C .. vcompile
 	@echo "Compiling the verilog model and simulator ..."
-	bsc -u -elab -verilog $ $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $<
-	bsc -verilog $(BSC_ARGS) -remove-dollar -vsearch $(VERILOG_PATH) -e mk$* -o ./$@.exe
+	bsc -u -elab -verilog $ $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $< > $(LOG_FILE) 2>&1 
+	bsc -verilog $(BSC_ARGS) -remove-dollar -vsearch $(VERILOG_PATH) -e mk$* -o ./$@.exe > $(LOG_FILE) 2>&1 
 	@echo "Running the simulation (Verilog) ..."
 	$(call run_and_check, $@.exe )
 
