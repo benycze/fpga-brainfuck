@@ -264,7 +264,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
                     $display("BCpu read: It is not allowed to work with memory during the operational mode.");
             end
             regSpace  : begin
-                $display("BCpu read: Reading INTERNAL REGISTERS.");
+                //$display("BCpu read: Reading INTERNAL REGISTERS.");
                 // Turn the register read
                 regRegRead <= True;
                 // Prepare data there & send them
