@@ -84,7 +84,7 @@ if [ $translate_only -eq 1 ];then
     fi
 else
     if [ $run_tests -eq 1 ]; then
-        start_docker make test vtest
+        start_docker make LOG=1 test vtest
     else
         start_docker bash
     fi

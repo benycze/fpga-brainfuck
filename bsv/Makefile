@@ -15,8 +15,6 @@ include Common_Inc.mk
 TOPFILE = src/bcpu.bsv
 TOPMODULE = mkBCpu
 
-LOG_FILE=BSV-TRANSLATION.log
-
 # -------------------------------------------------------------------------------
 # Targets
 # -------------------------------------------------------------------------------
@@ -32,12 +30,12 @@ build_verilog:
 .PHONY: compile
 compile: $(BUILD_BSIM_FOLDER)
 	@echo "Compiling the BSV design ..."
-	bsc -u -elab -sim $(BSC_ARGS)  $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $(TOPFILE) > $(LOG_FILE) 2>&1 
+	bsc -u -elab -sim $(BSC_ARGS)  $(BSC_COMPILATION_FLAGS)  -p $(BSC_PATH)  $(TOPFILE) $(LOG_CMD)
 
 .PHONY: vcompile
 vcompile: $(BUILD_BSIM_FOLDER) $(BUILD_VERILOG_FOLDER)
 	@echo "Compiling the Verilog design ..."
-	bsc -u -elab -verilog  $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $(TOPFILE) > $(LOG_FILE) 2>&1 
+	bsc -u -elab -verilog  $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $(TOPFILE) $(LOG_CMD)
 
 .PHONY: test
 test: 

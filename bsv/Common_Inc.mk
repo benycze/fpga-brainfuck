@@ -30,3 +30,12 @@ BSC_C_FLAGS += -Xl -v -Xc -O3 -Xc++ -O3
 
 # Configuration of the compiler flags 
 BSC_COMPILATION_FLAGS += -show-range-conflict
+
+# Logging functionality
+LOG_FILE=BSV-TRANSLATION.log
+
+LOG ?= 0
+LOG_CMD =
+ifeq ($(LOG), 1)
+	LOG_CMD = > $(LOG_FILE) 2>&1
+endif
