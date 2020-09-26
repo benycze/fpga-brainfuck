@@ -58,8 +58,10 @@ module mkTbPrgRun (Empty);
     // Helping registers
     Reg#(Bool)  done        <- mkReg(False);
     Reg#(BData) readData    <- mkReg('h0);
-    Reg#(BData) inputData   <- mkReg('h2);
+    Reg#(BData) inputData   <- mkReg('h1);
     Reg#(int)   idx         <- mkReg(0);
+    Reg#(Bool)  waintInputTaken <- mkReg(False);
+    Reg#(int)   delayIter   <- mkReg(0);
 
     Reg#(BData) bcpuData    <- mkReg(0);
     Reg#(BData) refData     <- mkReg(0);
@@ -95,7 +97,7 @@ module mkTbPrgRun (Empty);
                 mcpu.read(getAddress(regSpace, 3));
                 action
                     let tmpData <- mcpu.getData();
-                    printDone <= unpack(tmpData[cODATA_FULL_MASK]);
+                    printDone <= !unpack(tmpData[cODATA_FULL_MASK]);
                 endaction
             endseq
             $display("\n=====================================");
@@ -141,18 +143,30 @@ module mkTbPrgRun (Empty);
         mcpu.write(getAddress(regSpace,'h0), 'h1);
         delay(2);
         // Start the simulation control loop
-        while(done == False) seq
+        while((done == False) && (delayIter < 10)) seq
             // Read the status register
             readBCpu(getAddress(regSpace,'h3));
             // Check the status register if we need to pass any data
             if(readData[cWINPUT_MASK] != 0)seq
                 mcpu.write(getAddress(regSpace,4), inputData);
                 inputData <= inputData + 1;
+
+                // Wait there until input data are taken
+                waintInputTaken <= False;
+                while(waintInputTaken == False) seq
+                    readBCpu(getAddress(regSpace,'h3));
+                    if(readData[cWINPUT_MASK] == 0) waintInputTaken <= True;
+                endseq
             endseq
 
             // Check if we need to read any data, read them untill the flag is set
             if(readData[cODATA_MASK] != 0)seq
+                // Disable the BCPU, print the result and and
+                // enable it again
+                mcpu.write(getAddress(regSpace,'h0), 'h0);
+                delay(2);
                 readAndPrint();
+                mcpu.write(getAddress(regSpace,'h0), 'h1);
             endseq
 
             // Check if the BCPU is in the exit state or check if we
@@ -166,8 +180,11 @@ module mkTbPrgRun (Empty);
                 $display("Processing has been finished");
                 done <= True;
             endseq
-        endseq
 
+            if(done == True) seq
+                delayIter <= delayIter + 1;
+            endseq
+        endseq
         // Disable the BCPU
         mcpu.write(getAddress(regSpace,'h0), 'h0);
 
