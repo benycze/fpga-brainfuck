@@ -127,6 +127,10 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     Wire#(RegCmdSt)         cmdRegToSt3     <- mkBypassWire;
     Reg#(RegCmdSt)          regDecCmd       <- mkReg(defaultValue);
 
+    // Helping signals for the edge detection
+    Reg#(Bool) waitForInoutReg       <- mkReg(False);
+    Reg#(Bool) regCoreEnabledDelay   <- mkReg(False);
+
     // ----------------------------------------------------
     // Rules & folks
     // ----------------------------------------------------
@@ -157,11 +161,22 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     // the previous stage (we can do it just in the case that we have some instruction which needs to use the 
     // currenly written value but we will do it like that to have a simpler HW).
 
-    // Pipeline is enabled when no stalls are there
-    let pipeEnabled = regCoreEnabled && !waitForInout && !regProgTerminated && !regInvalid;
+    // Pipeline is enabled when no stalls are there, ST1 are enabled also during the waitForInout 
+    // because we need to read/decode instruction for the next stage
+    let st1Enabled  = regCoreEnabled && !regProgTerminated && !regInvalid;
+    let pipeEnabled = st1Enabled && !waitForInout;
+
+    let inoutAddrBack = (!waitForInoutReg && waitForInout) || 
+                        (!regCoreEnabledDelay && regCoreEnabled);
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule st1_instruction_fetch (pipeEnabled);
+    rule wait_inout_reg;
+        waitForInoutReg     <= waitForInout;
+        regCoreEnabledDelay <= regCoreEnabled;
+    endrule
+
+    (* fire_when_enabled, no_implicit_conditions *)
+    rule st1_instruction_fetch (st1Enabled);
         let actPc   = regPc;
         st2ActPc    <= actPc;
         // In this stage, we have to read the address from the 
@@ -175,30 +190,36 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Invalidation of the processing (go back one instruction)
         let stage2Inv1Addr = actPc - 2;
         let stage2Inv2Addr = actPc - 1;
-    
-        // Select the instruction address to fetch based on the instruction from
-        // previous stage. Also compute the next stage address.
-        if(stage2Inv) begin
-            instMemPortAReq.wset(makeBRAMRequest(False, stage2Inv1Addr, 0));
-            instMemPortBReq.wset(makeBRAMRequest(False, stage2Inv2Addr, 0));
-            $display("BCore ST1: Stage 2 invalidation detected in instruction fetch stage in time ", $time);
-            $displayh("BCore ST1: Fetch addresses 0x", stage2Inv1Addr, " and 0x",stage2Inv2Addr);
-            actPc = stage2Inv1Addr ;
-        end else if(stage3AddrEn)begin
-            instMemPortAReq.wset(makeBRAMRequest(False, stage1Addr, 0));
-            instMemPortBReq.wset(makeBRAMRequest(False, stage2Addr, 0));
-            $display("BCore ST1: Stage 2 address writeback detected in instruction fetch stage in time ", $time);
-            $displayh("BCore ST1: Fetch addresses 0x", stage1Addr, " and 0x",stage2Addr);
-            actPc = stage1Addr;
-        end else begin
-            instMemPortAReq.wset(makeBRAMRequest(False, nonStage1Addr, 0));
-            instMemPortBReq.wset(makeBRAMRequest(False, nonStage2Addr, 0)); 
-            $display("BCore ST1: Standard instruction fetch in in time ", $time);
-            $displayh("BCore ST1: Fetch addresses 0x", nonStage1Addr, " and 0x",nonStage2Addr);
-        end
 
-        // Update the PC counter
-        regPc       <= actPc + 2;
+        // Modify the the PC value to a previous instruction iff the inout is in progress
+        if(inoutAddrBack)begin
+            $display("BCore ST1: Stage inout, disable detected, need to go one instruction back in  time ", $time);
+            $displayh("BCore ST1: Fixing to addresses 0x", stage2Inv1Addr, " and 0x",stage2Inv2Addr);
+            regPc <= stage2Inv1Addr;
+        end else if(!waitForInout) begin
+            // Select the instruction address to fetch based on the instruction from
+            // previous stage. Also compute the next stage address.
+            if(stage2Inv) begin
+                instMemPortAReq.wset(makeBRAMRequest(False, stage2Inv1Addr, 0));
+                instMemPortBReq.wset(makeBRAMRequest(False, stage2Inv2Addr, 0));
+                $display("BCore ST1: Stage 2 invalidation detected in instruction fetch stage in time ", $time);
+                $displayh("BCore ST1: Fetch addresses 0x", stage2Inv1Addr, " and 0x",stage2Inv2Addr);
+                actPc = stage2Inv1Addr ;
+            end else if(stage3AddrEn)begin
+                instMemPortAReq.wset(makeBRAMRequest(False, stage1Addr, 0));
+                instMemPortBReq.wset(makeBRAMRequest(False, stage2Addr, 0));
+                $display("BCore ST1: Stage 2 address writeback detected in instruction fetch stage in time ", $time);
+                $displayh("BCore ST1: Fetch addresses 0x", stage1Addr, " and 0x",stage2Addr);
+                actPc = stage1Addr;
+            end else begin
+                instMemPortAReq.wset(makeBRAMRequest(False, nonStage1Addr, 0));
+                instMemPortBReq.wset(makeBRAMRequest(False, nonStage2Addr, 0)); 
+                $display("BCore ST1: Standard instruction fetch in in time ", $time);
+                $displayh("BCore ST1: Fetch addresses 0x", nonStage1Addr, " and 0x",nonStage2Addr);
+            end
+
+            regPc <= actPc + 2;
+        end 
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
@@ -256,7 +277,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                         takeDataOutSt2En <= True;
                     end
                     tagged I_SaveIn: begin 
-                        $display("BCore ST2: Take data from output.");
+                        $display("BCore ST2: Take data from input.");
                         st3Dec.takeIn = True;
                         // Send signal to a logic which sets enable/disable signals
                         takeDataInSt2En <= True;
@@ -389,6 +410,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         if(decInst.takeIn) begin 
             tmpCellAData = inputData;
             $displayh("BCore ST3: Reading data from input FIFO. Value = 0x", tmpCellAData);
+            wb_reg = True;
         end else begin
             if(decInst.takeIn) begin
                 $display("BCore ST3: Unable to read from the input FIFO. No data available in time ",$time);
@@ -429,33 +451,35 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     rule send_out_data (outDataWire.wget() matches tagged Valid .d);
         // Write to the output FIFO
         outDataFifo.enq(d);
+        waitForOutput <= False;
     endrule
 
-    rule save_in_data(takeDataInSt2En);
+    rule save_in_data (waitForInput || takeDataInSt2En);
         // Take data from the input FIFO, store them into the register when
         // the stage 2 is being asserted
-        inputData <= inDataFifo.first;
+        let data = inDataFifo.first;
+        inputData <= data;
         inDataFifo.deq();
+        waitForInput <= False;
+        $display("BCore: Passing the input data ", data, " time ",$time);
     endrule
 
     // Data inout unblocking rules -- these rules are runned when we are waiting and
     // the "defuse" rule is met to unblock it
-    rule enable_inout_waiting;
-        if(!inDataFifo.notEmpty() && takeDataInSt2En)
+    rule enable_input_waiting (!waitForInput);
+        if(!inDataFifo.notEmpty() && takeDataInSt2En) begin
+            $display("BCore: Input waiting enabled.",$time);
             waitForInput <= True;
+        end
+    endrule
 
-        if(!outDataFifo.notFull() && takeDataOutSt2En)
+    rule enable_output_waiting (!waitForOutput);
+        if(!outDataFifo.notFull() && takeDataOutSt2En)begin
+            $display("BCore: Output waiting enabled.",$time);
             waitForOutput <= True;
+        end
     endrule
 
-    rule disable_inout_waiting(waitForInout);
-        if(waitForInput && inDataFifo.notEmpty())
-            waitForInput <= False;
-
-        if(waitForOutput && outDataFifo.notFull())
-            waitForOutput <= False;
-    endrule
-  
     // ----------------------------------------------------
     // Define methods & interfaces
     // ----------------------------------------------------

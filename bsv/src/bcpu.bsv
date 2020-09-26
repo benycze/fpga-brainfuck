@@ -229,7 +229,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     endrule
 
     rule push_bcore_input_data (inputBCoreData matches tagged Valid .d);
-        //$display("Pusing inptut data to the BCore unit");
+        //$displayh("Pushing inptut data to the BCore unit 0x",d);
         bCore.inputDataPush(d);
         inputBCoreData <= tagged Invalid;
     endrule
