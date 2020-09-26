@@ -24,6 +24,9 @@ set_global_assignment -name VHDL_FILE rtl/uart_stream_sync.vhd
 set_global_assignment -name QIP_FILE ip/pll/pll.qip
 set_global_assignment -name SDC_FILE constraints.sdc
 
+# Synthesis #################################################################
+set_global_assignment -name OPTIMIZATION_MODE "AGGRESSIVE PERFORMANCE"
+
 # Pins  #####################################################################
 puts "Adding PIN assignment configuration ..."
 set_location_assignment PIN_M2 -to CLK
