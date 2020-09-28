@@ -68,7 +68,7 @@ endinterface
 module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData)) provisos (
     Bits#(typeAddr, n_typeAddr), Bits#(typeData, n_typeData),
     Literal#(typeData), Literal#(typeAddr), Arith#(typeAddr),
-    Arith#(typeData),  Eq#(typeData), 
+    Arith#(typeData),  Eq#(typeData), Ord#(typeAddr),
     // For the extend inside the execution_and_writeback rule == the sum of the data length and
     // parameter a__ (from the evaluation) has to be equal to the address length. 12 bit is the 
     // length of the jump value
@@ -167,7 +167,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     let pipeEnabled = st1Enabled && !waitForInout;
 
     let inoutAddrBack = (!waitForInoutReg && waitForInout) || 
-                        (!regCoreEnabledDelay && regCoreEnabled);
+                        (!regCoreEnabledDelay && regCoreEnabled) && regPc > 0;
 
     (* fire_when_enabled, no_implicit_conditions *)
     rule wait_inout_reg;
