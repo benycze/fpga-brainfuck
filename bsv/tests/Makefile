@@ -175,7 +175,7 @@ clean_gen:
 	@echo "Cleaning generated files ..."
 	@for f in $(shell find data/* -maxdepth 1 -type d); do \
 	echo " * cleaning the $${f} folder"; \
-	rm -f data/$${f}/$${f}.mif data/$${f}/$${f}; \
+	$$(cd $${f} && rm -f *.mif `basename $${f}` `basename $${f}`.hex && cd ..); \
 	done
 
 clean_log:
