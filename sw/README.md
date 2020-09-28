@@ -166,9 +166,10 @@ Instructions are encoded like following (No = you can use any data, BCPU is igno
 | [                 |   0x7     | Yes - jmp value (B)   | Cell == 0 -> jump to ]                                    |
 | ]                 |   0x8     | Yes - jmp value (B)   | Cell != 0 -> jump to [                                    |
 | x (extended)      |   0x9     | No                    | Program termination (BCPU stops the operation)            |
+| & (extended)      |   0x10    | No                    | Preload data to cell register                             |
 
 The jump value is in bytes which are added/subtracted from the current PC (program counter) in the BCPU - jump is relative from the position in the source code. Each program
-starts from the address 0. The original [Brainfuck language](https://cs.wikipedia.org/wiki/Brainfuck) was extended with the _;_ symbol for *No operation*, _x_ for the program termination
+starts from the address 0. The original [Brainfuck language](https://cs.wikipedia.org/wiki/Brainfuck) was extended with the _;_ symbol for *No operation*, _x_ for the program termination, _&_ preload
 and line comment starting with // (like in C). Compiler source code is located in the `compiler` folder.
 
 We are not interested about the real value of the PC during the program termination. The BCPU program is terminated in the last pipeline stage and therefore you have to decrement the

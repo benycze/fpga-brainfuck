@@ -191,6 +191,17 @@ class BTranslate(object):
         # We are out ... time to dump our code
         return inst_body
 
+    def __add_cycle_padding(self):
+        """
+        Add the jump padding - two no-ops
+        """
+        ret = []
+        ret.append((("&",0), self.mem_pos))
+        self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
+        ret.append(((";",0), self.mem_pos))
+        self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
+        return ret
+
     def __translate_cycle(self):
         """
         Translate the BCPU cycle construction
@@ -206,10 +217,15 @@ class BTranslate(object):
             raise BTranslationError("Cycle opening [ not found, detected {}.".format(self.last_sym), self.line_cnt, self.char_cnt)
 
         # Remember the first address, translate the body, remember the return address and construct
-        # the jump instruction
+        # the jump instruction.
+
+        # Each jump needs to be predecessed by the preload operation (to store data in the execution stage) and 
+        # one NOP instruction to have a fresh data in stage 2 (jump analysis)
+        f_pad_jmpend = self.__add_cycle_padding()
         bAddress = self.mem_pos
         self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
         body_code = self.__translate_body()
+        f_pad_jmpbegin = self.__add_cycle_padding()
         eAddress = self.mem_pos
         self.mem_pos = self.mem_pos + BIsa.INST_WIDTH
 
@@ -219,7 +235,7 @@ class BTranslate(object):
 
         # We are done ... everything is fine. Time to dump our functionality
             # Front jump -- we need to jump to the next address behind the ]
-            # Back jump -- we need to jimp the address which is relatively from the ], following the ]
+            # Back jump -- we need to jump the address which is relatively from the ], following the ]
         fJumpOffset = eAddress - bAddress + BIsa.INST_WIDTH
         bJumpOffset = eAddress - bAddress - BIsa.INST_WIDTH
 
@@ -235,11 +251,13 @@ class BTranslate(object):
             raise BTranslationError("Jump is longer than {} B.".format(max_jmp), self.line_cnt, self.char_cnt)
 
         # Generate the [
+        inst_body.extend(f_pad_jmpend)
         fJump = (("[",fJumpOffset), bAddress)
         inst_body.append(fJump)
         # Append body to the list
         inst_body.extend(body_code)
         # Generate the ] and return the body
+        inst_body.extend(f_pad_jmpbegin)
         bJump = (("]",bJumpOffset), eAddress)
         inst_body.append(bJump)
         return inst_body
