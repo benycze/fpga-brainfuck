@@ -118,7 +118,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
 
         // Rules for multiplexing of port A from SW and CORE
     rule drain_req_from_cell_fifo (!cmdEn);
-        //$display("BCpu: Request drained from the SW, port A, cell memory, time ", $time);
+        $display("BCpu: Request drained from the SW, port A, cell memory, time ", $time);
         let data = cellReq.first;
         cellReq.deq;
         cellMem.portA.request.put(data);
@@ -164,7 +164,8 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         let ret_data <- cellMem.portA.response.get; 
         readRetData.enq(ret_data);
         regCellRead <= False;
-        //$display("BCpu: Draining data from cell memory (during non-operational mode).");
+        $display("BCpu: Draining data from cell memory (during non-operational mode).");
+        $display("BCpu: Drained data = ", fshow(ret_data));
     endrule
 
     rule drain_data_from_instruction_memory_app(!cmdEn && regInstRead);
@@ -172,13 +173,15 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         readRetData.enq(ret_data);
         regInstRead <= False;
         //$display("BCpu: Draining data from instruction memory (during non-operational mode).");
+        //$display("BCpu: Drained data = ", fshow(ret_data));
     endrule
 
     rule drain_reg (regSpaceRet matches tagged Valid .data &&& regRegRead);
         readRetData.enq(data);
         regSpaceRet <= tagged Invalid;
         regRegRead  <= False;
-       //$display("BCpu: Draining data from the register space");
+        //$display("BCpu: Draining data from the register space");
+        //$displayh("BCpu: Drained data = ", data);
     endrule
 
     // Drain and apply rules which can be taken immediatelly
@@ -303,6 +306,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         let data = readRetData.first;
         readRetData.deq(); 
         //$displayh("BCpu read: Returned data --> 0x",data);
+        //$display("BCpu read done in time ", $time);
         return data;
     endmethod
 
@@ -321,7 +325,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
                     cellReq.enq(makeBRAMRequest(True,mem_addr_slice,data));
                 else
                     $display("BCpu write: It is not allowed to work with memory during the operational mode.");
-            end
+           end
            instSpace  : begin
                 //$display("BCpu write: Writing the INSTRUCTION memory.");
                 if(!cmdEn)
@@ -350,7 +354,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
             end
         endcase
 
-        //$displayh("BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
+       //$displayh("BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
     endmethod
 
     method Bool getReadRunning();

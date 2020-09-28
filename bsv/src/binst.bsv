@@ -36,10 +36,11 @@ package binst;
         struct  { Bit#(12) jmpVal; } I_JmpEnd;   // Move the pointer to the corresponding ] - "["    
         struct  { Bit#(12) jmpVal; } I_JmpBegin; // Move the poiter to the correspodnig [ - "]"
         void    I_Terminate;            // Program termination - stop the operation
+        void    I_PreloadData;          // Preload data from the register - "&"
     } BInst deriving (Bits,Eq,FShow);
 
     // Number of supported instructions
-    typedef 10 BInstCount;
+    typedef 11 BInstCount;
 
     // Instruction width
     typedef 16 BInstWidth;
@@ -69,6 +70,7 @@ package binst;
         Bit#(12)    jmpVal;
         Bool        jmpBegin;
         Bool        prgTerminated;
+        Bool        preaload;
     } RegCmdSt deriving (Bits,FShow);
 
     instance DefaultValue #(RegCmdSt);
@@ -82,7 +84,8 @@ package binst;
             jmpEnd          : False,
             jmpBegin        : False,
             jmpVal          : 0,
-            prgTerminated   : False
+            prgTerminated   : False,
+            preaload        : False
         };
     endinstance
 

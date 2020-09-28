@@ -184,9 +184,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Prepare parallel values for stages
         let nonStage1Addr = actPc;
         let nonStage2Addr = actPc + 1;
-            // Prepare parallel values for non-stages
-        let stage1Addr = stage3Addr;
-        let stage2Addr = stage3Addr + 1;
+            // Prepare parallel values for non-stagesv (go back one instruction due to the pipe stage)
+        let stage1Addr = stage3Addr - 2;
+        let stage2Addr = stage3Addr - 1;
             // Invalidation of the processing (go back one instruction)
         let stage2Inv1Addr = actPc - 2;
         let stage2Inv2Addr = actPc - 1;
@@ -199,18 +199,18 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         end else if(!waitForInout) begin
             // Select the instruction address to fetch based on the instruction from
             // previous stage. Also compute the next stage address.
-            if(stage2Inv) begin
-                instMemPortAReq.wset(makeBRAMRequest(False, stage2Inv1Addr, 0));
-                instMemPortBReq.wset(makeBRAMRequest(False, stage2Inv2Addr, 0));
-                $display("BCore ST1: Stage 2 invalidation detected in instruction fetch stage in time ", $time);
-                $displayh("BCore ST1: Fetch addresses 0x", stage2Inv1Addr, " and 0x",stage2Inv2Addr);
-                actPc = stage2Inv1Addr ;
-            end else if(stage3AddrEn)begin
+            if(stage3AddrEn)begin
                 instMemPortAReq.wset(makeBRAMRequest(False, stage1Addr, 0));
                 instMemPortBReq.wset(makeBRAMRequest(False, stage2Addr, 0));
                 $display("BCore ST1: Stage 2 address writeback detected in instruction fetch stage in time ", $time);
                 $displayh("BCore ST1: Fetch addresses 0x", stage1Addr, " and 0x",stage2Addr);
                 actPc = stage1Addr;
+            end else if(stage2Inv) begin
+                instMemPortAReq.wset(makeBRAMRequest(False, stage2Inv1Addr, 0));
+                instMemPortBReq.wset(makeBRAMRequest(False, stage2Inv2Addr, 0));
+                $display("BCore ST1: Stage 2 invalidation detected in instruction fetch stage in time ", $time);
+                $displayh("BCore ST1: Fetch addresses 0x", stage2Inv1Addr, " and 0x",stage2Inv2Addr);
+                actPc = stage2Inv1Addr ;
             end else begin
                 instMemPortAReq.wset(makeBRAMRequest(False, nonStage1Addr, 0));
                 instMemPortBReq.wset(makeBRAMRequest(False, nonStage2Addr, 0)); 
@@ -232,6 +232,8 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // Both instructions should be valid, we pass the check and we can decode the instruction 
         // now. 
         let st3Dec = defaultValue;
+        let jmpInvDet = False;
+
         if(isValid(inst1Res) && isValid(inst2Res)) begin
             $display("BCore ST2: Instruction decode & fetch operation has been started.");
             // Unpack data from maybe    
@@ -245,7 +247,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             $displayh("BCore ST2: Sending read request to BRAM address 0x",read_addr);
 
             // Star the decoding and setting of bit flags. This allows faster HW (1 bit comparator)
-            //  in the next stage but we will consume more bits.  
+            // in the next stage but we will consume more bits.  
             BInst instruction = unpack({pack(inst1), pack(inst2)});
             if(!tmpStage3Inv) begin
                 // Analyze the instrucion
@@ -283,19 +285,33 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                         takeDataInSt2En <= True;
                     end
                     tagged I_JmpEnd { jmpVal : .jmpVal1 } : begin 
-                        $display("BCore ST2: Jump-end instruction.");
-                        st3Dec.jmpEnd = True;
-                        st3Dec.jmpVal = jmpVal1;
+                        if(isValid(regCellData))begin
+                            st3Dec.jmpEnd = True;
+                            st3Dec.jmpVal = jmpVal1;
+                            $display("BCore ST2: Jump-end instruction, value = 0x", jmpVal1);
+                        end else begin
+                            jmpInvDet = True;
+                            $display("BCore ST2: Jump-end invalidation due to the non-fresh register.");
+                        end
                     end
                     tagged I_JmpBegin { jmpVal : .jmpVal1 } : begin 
-                        $display("BCore ST2: Jump-begin instruction.");
-                        st3Dec.jmpBegin = True;
-                        st3Dec.jmpVal   = jmpVal1;
+                        if(isValid(regCellData))begin
+                            st3Dec.jmpBegin = True;
+                            st3Dec.jmpVal   = jmpVal1;
+                            $displayh("BCore ST2: Jump-begin instruction, value = 0x", jmpVal1);
+                        end else begin
+                            jmpInvDet = True;
+                            $display("BCore ST2: Jump-begin invalidation due to the non-fresh register.");
+                        end
                     end
                     tagged I_Terminate: begin
                         $display("BCore ST2: Program termination was detected.");
                         st3Dec.prgTerminated = True;
                     end 
+                    tagged I_PreloadData: begin
+                        $display("BCore ST2: Data preloading to the cell register.");
+                        st3Dec.preaload = True;
+                    end
                     default : begin
                         $display("BCore ST2: Unknown instruction was detected.");
                         regInvalid <= True;
@@ -304,10 +320,15 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             end
         end
 
+        // Helping variables used in the next code
+        let tmpCellData = fromMaybe(0, regCellData);
+        let st2JmpEndEn      = st3Dec.jmpEnd && (tmpCellData == 0);
+        let st2JmpBeginEn    = st3Dec.jmpBegin && (tmpCellData != 0);
+
         // Precompute data for the next clock cycle which will be stored in the register 
         // This allows us to achieve a better timing
         // Compute the invalidation of read/write for the next stage
-        if(st3Dec.dataPtrInc || st3Dec.dataPtrDec || st3Dec.jmpEnd || st3Dec.jmpBegin) begin
+        if(st3Dec.dataPtrInc || st3Dec.dataPtrDec || st2JmpBeginEn || st2JmpEndEn || jmpInvDet) begin
             tmpStage3Inv = True;
             $display("BCore ST2: Stage 2 invalidation was detected, sending up.");
         end else begin
@@ -321,17 +342,19 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // Conver to bits, extend to the address and unpack. We have to send the address invalidation command
         // to the first stage to work with the right instruction in the next clock cycle.
         typeAddr jmpVal = unpack(extend(pack(st3Dec.jmpVal)));
-        let jmpAhead = st2ActPc - jmpVal;
-        let jmpBack  = st2ActPc + jmpVal;
-        let tmpCellData = fromMaybe(0,regCellData);
+        let jmpBack   = st2ActPc - jmpVal;
+        let jmpAhead  = st2ActPc + jmpVal;
+ 
+        if(st2JmpEndEn || st2JmpBeginEn)
+            $displayh("BCore ST2: Cell memory data is 0x", tmpCellData);
             // Ahead jump is the default one
-        if(st3Dec.jmpEnd && (tmpCellData == 0)) begin
-            let jmpSel = jmpAhead;
-            stage3AddrEn <= True;
+        if(st2JmpEndEn) begin
+            stage3Addr     <= jmpAhead;
+            stage3AddrEn   <= True;
             $displayh("BCore ST2: Stage 2 address jump ahead = 0x", jmpAhead);
-        end else if(st3Dec.jmpBegin && (tmpCellData != 0)) begin
-            stage3Addr <= jmpBack;
-            stage3AddrEn <= True;
+        end else if(st2JmpBeginEn) begin
+            stage3Addr     <= jmpBack;
+            stage3AddrEn   <= True;
             $displayh("BCore ST2: Stage 2 address jump back = 0x", jmpBack);
         end else begin
             stage3AddrEn <= False;
@@ -360,9 +383,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // Check if we have a valid data in the register
         // If yes, we will store data. If no, we will store
         // data from the register.
-        let tmpCellAData = fromMaybe(0, tmpCellARes); // Default value
+        let tmpCellAData = fromMaybe(0,tmpCellARes); // Default value
         if(isValid(regCellData)) begin
-            // Unpack data from the maybe
+            // Unpack data from the maybe and use the register data
             tmpCellAData = fromMaybe(0, regCellData);
         end
         $displayh("BCore ST3: Current cell data value is 0x",tmpCellAData);
@@ -392,8 +415,8 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         end
 
         // Cell value - we don't need to do any write-back to BRAM because we can remember the value and write it back
-        // int the case of the pointer update. 
-        let wb_reg = False;
+        // int the case of the pointer update.
+        let wb_reg = False; 
         if(decInst.dataInc)begin
             tmpCellAData = tmpCellAData + 1; 
             $displayh("BCore ST3: Stage 3 cell memory data increment. New value = 0x", tmpCellAData);
@@ -426,8 +449,13 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             end
         end
 
+        if(decInst.preaload)begin
+            $display("BCore ST3: Data preloading active.");
+            wb_reg = True;
+        end
+
         // Write-back to the registers
-        regCell     <= tmpCellAddr;
+        regCell <= tmpCellAddr;
         if(wb_done) begin
             regCellData <= tagged Invalid;
             $display("BCore ST3: Invalidating register data, need to fetch a fresh data.");
@@ -486,6 +514,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
     method Action setEnabled(Bool enabled);
         regCoreEnabled      <= enabled;
+        $display("Disabled - value  ", enabled, " in time ", $time);
     endmethod
 
     method typeAddr getPC();
