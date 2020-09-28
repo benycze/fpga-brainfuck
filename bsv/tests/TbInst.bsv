@@ -19,28 +19,30 @@ module mkTbInst (Empty);
     // Prepare reference data --> we are interested in the top, level data because
     // the MSB encodes instruciton and 12 bits contains "aaa" (BSV not-initlaized values)
     Vector#(BInstCount, Bit#(BInstWidth)) inData  = newVector;
-    inData[0] = 'h0aaa; 
-    inData[1] = 'h1aaa;
-    inData[2] = 'h2aaa; 
-    inData[3] = 'h3aaa;
-    inData[4] = 'h4aaa;
-    inData[5] = 'h5aaa;
-    inData[6] = 'h6aaa;
-    inData[7] = 'h7002;
-    inData[8] = 'h8abc;
-    inData[9] = 'h9aaa;
+    inData[0]   = 'h0aaa; 
+    inData[1]   = 'h1aaa;
+    inData[2]   = 'h2aaa; 
+    inData[3]   = 'h3aaa;
+    inData[4]   = 'h4aaa;
+    inData[5]   = 'h5aaa;
+    inData[6]   = 'h6aaa;
+    inData[7]   = 'h7002;
+    inData[8]   = 'h8abc;
+    inData[9]   = 'h9aaa;
+    inData[10]  = 'haaaa;
 
     Vector#(BInstCount, BInst) refData = newVector;
-    refData[0] = tagged I_Nop;
-    refData[1] = tagged I_DataPtrInc;
-    refData[2] = tagged I_DataPtrDec;
-    refData[3] = tagged I_DataInc;
-    refData[4] = tagged I_DataDec;
-    refData[5] = tagged I_SendOut;
-    refData[6] = tagged I_SaveIn;
-    refData[7] = tagged I_JmpEnd { jmpVal : 2};
-    refData[8] = tagged I_JmpBegin { jmpVal : 'habc};
-    refData[9] = tagged I_Terminate;
+    refData[0]  = tagged I_Nop;
+    refData[1]  = tagged I_DataPtrInc;
+    refData[2]  = tagged I_DataPtrDec;
+    refData[3]  = tagged I_DataInc;
+    refData[4]  = tagged I_DataDec;
+    refData[5]  = tagged I_SendOut;
+    refData[6]  = tagged I_SaveIn;
+    refData[7]  = tagged I_JmpEnd { jmpVal : 2};
+    refData[8]  = tagged I_JmpBegin { jmpVal : 'habc};
+    refData[9]  = tagged I_Terminate;
+    refData[10] = tagged I_PreloadData;
 
     function Action checkOpcode(Bit#(BInstWidth) in, BInst exp);
         return action
