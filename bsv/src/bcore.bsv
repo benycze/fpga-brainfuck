@@ -88,7 +88,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     Reg#(Bool) waitForOutput  <- mkReg(False);
     Bool waitForInout = waitForInput || waitForOutput;
     // Program counter (we need to address the whole BRAM address space)
-    Wire#(typeAddr) st2ActPc  <- mkBypassWire;
+    Wire#(typeAddr) st2ActPc  <- mkDWire(0);
     Reg#(typeAddr) regPc      <- mkReg(0);
     // Cell pointer address (we need to address the whole BRAM address space)
     Reg#(typeAddr)          regCell         <- mkReg(0);
@@ -123,9 +123,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
     Reg#(typeAddr)          stage3Addr      <- mkReg(0);
     Reg#(typeData)          st3Inst2Reg     <- mkReg(0);
 
-    Wire#(RegCmdSt)         st2toCmdReg     <- mkBypassWire;
-    Wire#(RegCmdSt)         cmdRegToSt3     <- mkBypassWire;
-    Reg#(RegCmdSt)          regDecCmd       <- mkReg(defaultValue);
+    Wire#(Maybe#(RegCmdSt)) st2toCmdReg     <- mkDWire(tagged Invalid);
+    Wire#(Maybe#(RegCmdSt)) cmdRegToSt3     <- mkDWire(tagged Invalid);
+    Reg#(Maybe#(RegCmdSt))  regDecCmd       <- mkReg(tagged Invalid);
 
     // Helping signals for the edge detection
     Reg#(Bool) waitForInoutReg       <- mkReg(False);
@@ -184,7 +184,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Prepare parallel values for stages
         let nonStage1Addr = actPc;
         let nonStage2Addr = actPc + 1;
-            // Prepare parallel values for non-stagesv (go back one instruction due to the pipe stage)
+            // Prepare parallel values for non-stages (go back one instruction due to the pipe stage)
         let stage1Addr = stage3Addr - 2;
         let stage2Addr = stage3Addr - 1;
             // Invalidation of the processing (go back one instruction)
@@ -233,8 +233,9 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // now. 
         let st3Dec = defaultValue;
         let jmpInvDet = False;
+        let st2_en = isValid(inst1Res) && isValid(inst2Res);
 
-        if(isValid(inst1Res) && isValid(inst2Res)) begin
+        if(st2_en) begin
             $display("BCore ST2: Instruction decode & fetch operation has been started.");
             // Unpack data from maybe    
             let inst1 = fromMaybe(?,inst1Res);
@@ -321,7 +322,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         end
 
         // Helping variables used in the next code
-        let tmpCellData = fromMaybe(0, regCellData);
+        let tmpCellData = fromMaybe(?, regCellData);
         let st2JmpEndEn      = st3Dec.jmpEnd && (tmpCellData == 0);
         let st2JmpBeginEn    = st3Dec.jmpBegin && (tmpCellData != 0);
 
@@ -362,31 +363,36 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
         // Writaback to next stage
         stage2Inv <= tmpStage3Inv;
-        st2toCmdReg <= st3Dec;
+        if (st2_en) 
+            st2toCmdReg <= tagged Valid st3Dec;
+        else
+            st2toCmdReg <= tagged Invalid;
+            
         $display("BCore ST2: Instruction decode and operands in time ",$time);
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule  st2_dec_reg(pipeEnabled);
+    rule  st2_dec_reg(pipeEnabled || (!waitForInout && !regCoreEnabledDelay));
         let regData = regDecCmd;
         cmdRegToSt3 <= regData;
         regDecCmd   <= st2toCmdReg;
     endrule
 
     (* fire_when_enabled, no_implicit_conditions *)
-    rule st3_execution_and_writeback (pipeEnabled);
-        // Get data from the previous stage
+    rule st3_execution_and_writeback (cmdRegToSt3 matches tagged Valid .decInst);
+        // This rule is working based on the valid decoded instruction from the instruction
+        // decode stage.
         let tmpCellARes = cellMemPortARes.wget();
         let tmpCellAddr = regCell; 
-        let decInst     = cmdRegToSt3;
+        //let decInst     = cmdRegToSt3;
 
         // Check if we have a valid data in the register
         // If yes, we will store data. If no, we will store
         // data from the register.
-        let tmpCellAData = fromMaybe(0,tmpCellARes); // Default value
+        let tmpCellAData = fromMaybe(?,tmpCellARes); // Default value
         if(isValid(regCellData)) begin
             // Unpack data from the maybe and use the register data
-            tmpCellAData = fromMaybe(0, regCellData);
+            tmpCellAData = fromMaybe(?, regCellData);
         end
         $displayh("BCore ST3: Current cell data value is 0x",tmpCellAData);
 
@@ -514,7 +520,6 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
     method Action setEnabled(Bool enabled);
         regCoreEnabled      <= enabled;
-        $display("Disabled - value  ", enabled, " in time ", $time);
     endmethod
 
     method typeAddr getPC();

@@ -17,6 +17,9 @@ import FIFOF :: *;
 import ClientServer :: *;
 import Connectable  :: *;
 
+// Configuartion of the memory counter width
+typedef 5 MEM_REQ_CNT_WIDH;
+
 // Generic CPU interface -- the type addr specifies the
 // memory address widht and type data specifies the initial 
 // width which is used for the CPU operation
@@ -112,47 +115,79 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     Reg#(Maybe#(BData))     outputBcoreData <- mkReg(tagged Invalid);
     Reg#(Maybe#(BData))     inputBCoreData  <- mkReg(tagged Invalid);
 
+    // Helping logic for enabling/disabling of multiplexing logic
+    Wire#(Bool) instMemReq      <- mkDWire(False);
+    Wire#(Bool) instMemResp     <- mkDWire(False);
+    Reg#(UInt#(MEM_REQ_CNT_WIDH)) instMemCnt <- mkReg(0);
+
+    Wire#(Bool) cellMemReq      <- mkDWire(False);
+    Wire#(Bool) cellMemResp     <- mkDWire(False);
+    Reg#(UInt#(MEM_REQ_CNT_WIDH)) cellMemCnt <- mkReg(0);
+
     // ------------------------------------------------------------------------
     // Rules 
     // ------------------------------------------------------------------------
 
+        // Counter logic for the arbitration
+    rule inst_mem_counter;
+        if (instMemReq && !instMemResp)
+            instMemCnt <= instMemCnt - 1;
+        else if(!instMemReq && instMemResp)
+            instMemCnt <= instMemCnt + 1;
+        else
+            instMemCnt <= instMemCnt;
+    endrule
+
+    rule cell_mem_counter;
+        if (cellMemReq && !cellMemResp)
+            cellMemCnt <= cellMemCnt - 1;
+        else if(!cellMemReq && cellMemResp)
+            cellMemCnt <= cellMemCnt + 1;
+        else
+            cellMemCnt <= cellMemCnt;
+    endrule
+
         // Rules for multiplexing of port A from SW and CORE
-    rule drain_req_from_cell_fifo (!cmdEn);
-        $display("BCpu: Request drained from the SW, port A, cell memory, time ", $time);
+    rule drain_req_from_cell_fifo (!cmdEn && cellMemCnt == 0);
+        //$display("BCpu: Request drained from the SW, port A, cell memory, time ", $time);
         let data = cellReq.first;
         cellReq.deq;
         cellMem.portA.request.put(data);
     endrule
 
-    rule drain_req_from_cell_client (cmdEn);
+    rule drain_req_from_cell_client (cmdEn || cellMemCnt != 0);
         //$display("BCpu: Request drained from the BCPU port A, cell memory, time ", $time);
         let data <- bCore.cell_ifc.portA.request.get();
         cellMem.portA.request.put(data);
+        cellMemReq <= True;
     endrule
 
-    rule drain_req_from_inst_fifo (!cmdEn);
+    rule drain_req_from_inst_fifo (!cmdEn && instMemCnt == 0);
         //$display("BCpu: Request drained from the SW, port A, inst memory, time ", $time);
         let data = instReq.first;
         instReq.deq;
         instMem.portA.request.put(data);
     endrule
     
-    rule drain_req_from_inst_client (cmdEn);
+    rule drain_req_from_inst_client (cmdEn || instMemCnt != 0);
         //$display("BCpu: Request drained from the BCPU port A, inst memory, time ", $time);
         let data <- bCore.inst_ifc.portA.request.get();
         instMem.portA.request.put(data);
+        instMemReq <= True;
     endrule
 
-    rule put_inst_back_to_bcore (cmdEn);
+    rule put_inst_back_to_bcore (cmdEn || instMemCnt != 0);
         //$display("BCpu: Pushing the response back to BCPU, port A, inst memory, time ", $time);
         let data <- instMem.portA.response.get;
         bCore.inst_ifc.portA.response.put(data);
+        instMemResp <= True;
     endrule
 
-    rule put_cell_back_to_bcore (cmdEn);
+    rule put_cell_back_to_bcore (cmdEn || cellMemCnt != 0);
         //$display("BCpu: Pushing the reponse back to the BCPU, port A, cell memory, time ", $time);
         let data <- cellMem.portA.response.get;
         bCore.cell_ifc.portA.response.put(data);
+        cellMemResp <= True;
     endrule
 
         // Rules for the selecttion of output data from internal registers
@@ -164,8 +199,8 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         let ret_data <- cellMem.portA.response.get; 
         readRetData.enq(ret_data);
         regCellRead <= False;
-        $display("BCpu: Draining data from cell memory (during non-operational mode).");
-        $display("BCpu: Drained data = ", fshow(ret_data));
+        //$display("BCpu: Draining data from cell memory (during non-operational mode).");
+        //$display("BCpu: Drained data = ", fshow(ret_data));
     endrule
 
     rule drain_data_from_instruction_memory_app(!cmdEn && regInstRead);
@@ -203,7 +238,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
             default : $display("Unknown command");
         endcase
 
-        //$display("BCpu: Configuration for the BCore was drained.");
+        //  $display("BCpu: Configuration for the BCore was drained.");
     endrule
 
     // Configure enable/disable signals to the BCore based on the 
