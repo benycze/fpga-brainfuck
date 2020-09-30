@@ -128,18 +128,18 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         // Counter logic for the arbitration
     rule inst_mem_counter;
         if (instMemReq && !instMemResp)
-            instMemCnt <= instMemCnt - 1;
-        else if(!instMemReq && instMemResp)
             instMemCnt <= instMemCnt + 1;
+        else if(!instMemReq && instMemResp)
+            instMemCnt <= instMemCnt - 1;
         else
             instMemCnt <= instMemCnt;
     endrule
 
     rule cell_mem_counter;
         if (cellMemReq && !cellMemResp)
-            cellMemCnt <= cellMemCnt - 1;
-        else if(!cellMemReq && cellMemResp)
             cellMemCnt <= cellMemCnt + 1;
+        else if(!cellMemReq && cellMemResp)
+            cellMemCnt <= cellMemCnt - 1;
         else
             cellMemCnt <= cellMemCnt;
     endrule
