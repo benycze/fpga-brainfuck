@@ -17,9 +17,6 @@ import FIFOF :: *;
 import ClientServer :: *;
 import Connectable  :: *;
 
-// Configuartion of the memory counter width
-typedef 5 MEM_REQ_CNT_WIDH;
-
 // Generic CPU interface -- the type addr specifies the
 // memory address widht and type data specifies the initial 
 // width which is used for the CPU operation
@@ -118,11 +115,11 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     // Helping logic for enabling/disabling of multiplexing logic
     Wire#(Bool) instMemReq      <- mkDWire(False);
     Wire#(Bool) instMemResp     <- mkDWire(False);
-    Reg#(UInt#(MEM_REQ_CNT_WIDH)) instMemCnt <- mkReg(0);
+    Reg#(UInt#(MemReqCntWidth)) instMemCnt <- mkReg(0);
 
     Wire#(Bool) cellMemReq      <- mkDWire(False);
     Wire#(Bool) cellMemResp     <- mkDWire(False);
-    Reg#(UInt#(MEM_REQ_CNT_WIDH)) cellMemCnt <- mkReg(0);
+    Reg#(UInt#(MemReqCntWidth)) cellMemCnt <- mkReg(0);
 
     // ------------------------------------------------------------------------
     // Rules 

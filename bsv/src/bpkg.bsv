@@ -11,6 +11,8 @@ package bpkg;
 import BRAM :: *;
 
 // Typedefs ---------------------------------------------------------
+// Configuartion of the memory counter width
+typedef 5 MemReqCntWidth;
 
 // Address for reading from the BCpu entity
 typedef 16 BAddrWidth;
