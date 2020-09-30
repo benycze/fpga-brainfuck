@@ -143,7 +143,7 @@ module mkTbPrgRun (Empty);
         mcpu.write(getAddress(regSpace,'h0), 'h1);
         delay(2);
         // Start the simulation control loop
-        while((done == False) && (delayIter < 10)) seq
+        while(delayIter < 10) seq
             // Read the status register
             readBCpu(getAddress(regSpace,'h3));
             // Check the status register if we need to pass any data
@@ -176,7 +176,7 @@ module mkTbPrgRun (Empty);
                 report_and_stop(1);
             endseq
 
-            if(readData[cTERMINATED_MASK] != 0)seq
+            if(readData[cTERMINATED_MASK] != 0 && delayIter == 0)seq
                 $display("Processing has been finished");
                 done <= True;
             endseq

@@ -32,6 +32,15 @@ module mkTbAddr (Empty);
 
     Stmt fsmMemTest = seq 
         $display(" == READ & WRITE tests ==============");
+        $display("Instruction memory initilization init to zeros ...");
+        for(idx <= 0; idx < fromInteger(2 ** valueOf(BMemAddrWidth)); idx <= idx + 1) seq
+            action 
+                //$display("Write to BRAM started in time ",$time);
+                BAddr addr = truncate(pack('h4000 + idx));
+                mcpu.write(addr,'h0);
+            endaction
+        endseq
+
         $display("Enable the operation and try to read a register (read running = ", mcpu.getReadRunning(), ") ...");
         mcpu.write(getAddress(regSpace,0),'h1);
         $display("Unit enable = ",mcpu.getCpuEnabled());
@@ -42,8 +51,9 @@ module mkTbAddr (Empty);
         endaction
         $display("Disabling the unit ...");
         mcpu.write(getAddress(regSpace,0),'h0);
+        delay(5);
 
-        $display("Try to write the step enabled and check if the  unit was enabled");
+        $display("Try to write the step enabled and check if the unit was enabled");
         mcpu.write(getAddress(regSpace,0),'h2);
         delay(2);
         mcpu.read(getAddress(regSpace,0));
@@ -75,15 +85,16 @@ module mkTbAddr (Empty);
                 $display("PC value read/write is not working!");
                 $display("* expected - 0x",pc1," (MSB) and 0x",pc0," (LSB)");
                 $displayh("* received - 0x",addr_reg1,"(MSB) and 0x",addr_reg0," (LSB)");
+                
                 report_and_stop(1);
             end
         endaction
-        $display("PC testing was finished!!");
+        $display("PC testing was finished!! Time = ", $time);
 
          // Run the test
-        delay(10);
-        $display("Testing read/write to cell memory ...");
-        for(idx <= 0; idx < 255; idx <= idx + 1) seq
+        delay(20);
+        $display("Testing read/write to cell memory. Time =", $time);
+        for(idx <= 0; idx < fromInteger(2 ** valueOf(BMemAddrWidth)); idx <= idx + 1) seq
             action 
                 //$display("Write to BRAM started in time ",$time);
                 BAddr addr = truncate(pack(idx));
