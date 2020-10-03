@@ -1,7 +1,5 @@
 # Brainfuck CPU for FPGA
 
-**Work in Progress - Please, be patient because I am working on this in my free time**
-
 BSV build status: [![Build Status](https://travis-ci.com/benycze/fpga-brainfuck.svg?branch=master)](https://travis-ci.com/benycze/fpga-brainfuck)
 
 This repository contains a source code and desing of the CPU processing the Brainfuck code in FPGA. The design is quite simple and it is targeted on beginning FPGA programmers.
