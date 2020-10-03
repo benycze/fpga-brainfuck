@@ -38,7 +38,7 @@ vsim -do sim.tcl
 
 ## Input/Outputs
 
-The configuration of UART (baudrate,etc.) is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw). Address space is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw#address-space) 
+The configuration of UART (baudrate,etc.) is described [here](../sw). Address space is described [here](../sw#address-space) 
 
 | Input/Output      | Purpose                       |  PIN  |
 |-------------------|-------------------------------|-------|

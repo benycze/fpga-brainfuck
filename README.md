@@ -7,7 +7,7 @@ BSV build status: [![Build Status](https://travis-ci.com/benycze/fpga-brainfuck.
 This repository contains a source code and desing of the CPU processing the Brainfuck code in FPGA. The design is quite simple and it is targeted on beginning FPGA programmers.
 
 * Development board [CYC1000](https://shop.trenz-electronic.de/en/Products/Trenz-Electronic/CYC1000-Intel-Cyclone-10/), [documentation](https://www.trenz-electronic.de/fileadmin/docs/Trenz_Electronic/Modules_and_Module_Carriers/2.5x6.15/TEI0003/REV02/Documents/CYC1000%20User%20Guide.pdf), [resources](https://shop.trenz-electronic.de/en/TEI0003-02-CYC1000-with-Cyclone-10-FPGA-8-MByte-SDRAM?path=Trenz_Electronic/Modules_and_Module_Carriers/2.5x6.15/TEI0003/Driver/Arrow_USB_Programmer)
-* Languages - VHDL, Bluespec
+* Languages - VHDL, Bluespec SystemVerilog
 * Brainfuck source code examples - http://www.hevanet.com/cristofd/brainfuck/
 
 You can use the [Bluespec Compiler Docker](https://github.com/benycze/bsc-docker-container) for the translation of the Bluespec code if you don't want to install it inside your live system.
@@ -30,13 +30,13 @@ The project contains following folders:
 
 * _board_  - HDL desing and Quartus project
 * _sw_ - Software for communication and synthesis and translation of Brainfuck program
-* _bsv_ - source code of the Brainfuck processor in Bluespec Language
+* _bsv_ - source code of the Brainfuck processor in Bluespec SystemVerilog Language
 
-The address space is described [here](https://github.com/benycze/fpga-brainfuck/tree/master/sw).
+The address space is described [here](sw).
 
 ## FPGA project
 
-Details of the FPGA part is [here](https://github.com/benycze/fpga-brainfuck/tree/master/board).
+Details of the FPGA part is [here](board).
 
 The code translation consits of two main steps:
 
@@ -112,4 +112,30 @@ Info: Quartus Prime Programmer was successful. 0 errors, 0 warnings
 
 ### Brainfuck code translation
 
-TODO - describe the code translation and upload process here
+The code translation consists of following steps:
+
+1. Run the compiler inside the `sw/compiler` folder. It will generate you a binary file (based on BCPU ISA) which can be uploaded to into the FPGA IP core. The default name of translated binary is `a`. The example of generated outcome is (it is also a good idea to generate a hex dump of the memory):
+
+```bash
+./compiler.py --out ptr_inc2 ../../bsv/tests/data/ptr_inc2/ptr_inc2.b
+Translation done!
+```
+
+2. Use the `upload-program.py` tool inside the `sw` folder. You can also run the memory
+initialization (cell and instruction) to be absolutely sure that memory is initialized to some values.
+The initialization process takes some time because we are using the serial port and I need to change the
+communication protocol to be more effective :-).
+
+```bash
+./upload-program.py --erase compiler/ptr_inc2
+```
+
+3. Now, you need to enable the code processing using the `bbus.py` tool inside the `sw` folder by writing into a
+control register. The register offset is `0x8000` and we need to write value `1` (at index 0).
+
+```bash
+./bbus.py 0x8000 0x1
+```
+
+And thats it, your code is running! :-) Note that processing is stopped when the `Program termination` is detected.
+The detailed explanation of ISA, address space and code translation is [here](sw).
