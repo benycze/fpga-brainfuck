@@ -12,7 +12,7 @@ import bpkg :: *;
 import bcpu :: *;
 import TbCommon :: *;
 import StmtFSM :: *;
-
+import RegFile :: *;
 import BRAM :: *;
 
 
@@ -25,6 +25,12 @@ import BRAM :: *;
 String prgFolderPath = `PRG_FOLDER;
 String hexFilePath   = prgFolderPath + `HEX_FILE;
 String cellResPath   = prgFolderPath + "cell_mem.hex";
+String inputPath     = prgFolderPath + "in.data";
+String outputPath    = prgFolderPath + "out.data";
+
+// Index configuration
+int inDataLines  = 128;
+int outDataLines = 128;
 
 // Helping typedefs for the operation extraction
 Integer cODATA_MASK          = 0;
@@ -58,7 +64,6 @@ module mkTbPrgRun (Empty);
     // Helping registers
     Reg#(Bool)  done        <- mkReg(False);
     Reg#(BData) readData    <- mkReg('h0);
-    Reg#(BData) inputData   <- mkReg('h1);
     Reg#(int)   idx         <- mkReg(0);
     Reg#(Bool)  waintInputTaken <- mkReg(False);
     Reg#(int)   delayIter   <- mkReg(0);
@@ -66,6 +71,12 @@ module mkTbPrgRun (Empty);
     Reg#(BData) bcpuData    <- mkReg(0);
     Reg#(BData) refData     <- mkReg(0);
     Reg#(Bool)  printDone   <- mkRegU;
+    
+    Reg#(int) inputIdx                  <- mkReg(0);
+    RegFile#(int, BData) inputData      <- mkRegFileLoad(inputPath, 0, inDataLines);
+    
+    Reg#(int) outputIdx                 <- mkReg(0);
+    RegFile#(int, BData) expectedOut    <- mkRegFileLoad(outputPath, 0, outDataLines);
 
     // Read the given address and store data inside the
     // readData register
@@ -88,13 +99,24 @@ module mkTbPrgRun (Empty);
             while (printDone == False) seq
                 // Read the symbol from the FIFO. print it and 
                 // update the registers if the next iteration is required
-                mcpu.read(getAddress(regSpace, 4));
+                mcpu.read(getAddress(regSpace, 'h4));
                 action
                     let tmpData <- mcpu.getData();
                     $write(tmpData);
+
+                    let expData =  expectedOut.sub(outputIdx);
+                    if(tmpData != expData)begin
+                        $display("Expected output doesn't match!");
+                        $displayh("* expected: 0x",expData);
+                        $displayh("* received: 0x",tmpData);
+                        $displayh("* address: 0x",outputIdx);
+                        report_and_stop(1);
+                    end
+
+                    outputIdx <= outputIdx + 1;
                 endaction
 
-                mcpu.read(getAddress(regSpace, 3));
+                mcpu.read(getAddress(regSpace, 'h3));
                 action
                     let tmpData <- mcpu.getData();
                     printDone <= !unpack(tmpData[cODATA_FULL_MASK]);
@@ -137,7 +159,7 @@ module mkTbPrgRun (Empty);
                 mcpu.write(getAddress(cellSpace, truncate(pack(idx))), 'h0);
             endaction
         endseq
-
+        
         $display("Starting the program ====================");
         // Enable the BCPU
         mcpu.write(getAddress(regSpace,'h0), 'h1);
@@ -148,8 +170,10 @@ module mkTbPrgRun (Empty);
             readBCpu(getAddress(regSpace,'h3));
             // Check the status register if we need to pass any data
             if(readData[cWINPUT_MASK] != 0)seq
-                mcpu.write(getAddress(regSpace,4), inputData);
-                inputData <= inputData + 1;
+                
+                //inputData <= data;
+                mcpu.write(getAddress(regSpace,4), inputData.sub(inputIdx));
+                inputIdx <= inputIdx + 1;
 
                 // Wait there until input data are taken
                 waintInputTaken <= False;
