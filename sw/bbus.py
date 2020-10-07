@@ -53,6 +53,7 @@ def get_parser(args):
     parser.add_argument('--test',type=int,nargs=1,help='Run the infinite r/w test until the CTRL+C is fired. The passed argument is the address space bit width.')
     parser.add_argument("--max-test-addr",type=int_conv,nargs=1,help='Set the maximal tested address of passed address space. Default one is the maximal value.')
     parser.add_argument("--min-test-addr",type=int_conv,nargs=1,help='Set the minimal tested address of passed address space. Default one is the minimal value.')
+    parser.add_argument("--ascii",action='store_true',help="Print the ASCII symbol instead of the hex value")
     parser.add_argument('command',type=int_conv,nargs='*',help='There are two possible commands - read and write.'
     'Read is invoked iff only address is passed. Write is invoked iff we pass additonal value argument.')
 
@@ -80,13 +81,17 @@ def int_to_bytes(data):
         ret.append(con)
     return ret
 
-def print_byte(data):
+def print_byte(data, print_ascii):
     """
     Print passed data to the output
     """
     # Print the HEX format of read data
-    conv_data = hex(int.from_bytes(data,byteorder='little'))
-    print(conv_data)
+    data_int = int.from_bytes(data,byteorder='little')
+    if(print_ascii):
+        print(chr(data_int))
+    else:
+        print(hex(data_int))
+
 
 def start_test(dev,awidth,min_value,max_value):
     """
@@ -212,7 +217,8 @@ def process(args,dev):
         # Read command asserted
         addr = args.command[0]
         rd = read(dev,addr)
-        print_byte(rd)
+        print_byte(rd, args.ascii)
+
     elif(len(args.command) == 2):
         # Write command asserted
         addr = args.command[0]
