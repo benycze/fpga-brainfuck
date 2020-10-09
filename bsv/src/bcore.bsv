@@ -31,10 +31,12 @@ interface BCore_IFC#(type typeAddr, type typeData);
     interface BRAM2PortClient#(typeAddr, typeData) inst_ifc;
 
     // Control interface
+    (* always_ready *)
     method Action setEnabled(Bool enabled);
     method Action setPC(typeAddr pc);
 
     // Data response interface
+    (* always_enabled *)
     method typeAddr getPC();
 
     // Deal with input/output data:
@@ -43,20 +45,26 @@ interface BCore_IFC#(type typeAddr, type typeData);
     // - output data are available
     // - get the output data
     // - output data fifo is full
+    (* always_enabled *)
     method Bool inputDataFull();
     method Action inputDataPush(typeData data);
+    (* always_enabled *)
     method Bool outputDataAvailable();
     method ActionValue#(typeData) outputDataGet();
+    (* always_enabled *)
     method Bool outputDataFull();
     
     // We are waiting for input
+    (* always_enabled *)
     method Bool waitingForInput();
 
     // Invalid opcode detected
+    (* always_enabled *)
     method Bool getInvalidOpcode();
 
     // BCPU stops the operation due to the program temination.
     // This flag is reseted after we fire the setEnabled method
+    (* always_enabled *)
     method Bool getTermination();
 
 endinterface
