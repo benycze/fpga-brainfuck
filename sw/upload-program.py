@@ -28,9 +28,9 @@ def get_parser(args):
     int_conv = lambda x: int(x,0)
     parser = argparse.ArgumentParser(description='Upload the compiled program to the BCPU.'.format(prgname),formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--device',type=str,nargs=1,help='Specify the path to the device.',default='/dev/ttyUSB0')
-    parser.add_argument("--base",type=int_conv,nargs=1,help='Base address used for the uploading. Default value is 0x4000.',default=0x4000)
+    parser.add_argument("--base",type=int_conv,nargs=1,help='Base address used for the uploading. Default value is 0x4000.',default=[0x4000])
     parser.add_argument("--erase",action='store_true',help="Erase the device - initialize with zeros the program and instruction memory.")
-    parser.add_argument("--erase-last-address",type=int_conv,nargs=1,help="Last address of the erased address space. Default is 0x7FFF.",default=0x7FFF)
+    parser.add_argument("--erase-last-address",type=int_conv,nargs=1,help="Last address of the erased address space. Default is 0x7FFF.",default=[0x7FFF])
     parser.add_argument("input",nargs=1,help="File to upload.")
     return parser.parse_args(args)
 
@@ -105,8 +105,8 @@ def main():
         args = get_parser(sys.argv) 
         in_file_path    = args.input[0]
         device_path     = args.device
-        base            = args.base 
-        erase_max_addr  = args.erase_last_address
+        base            = args.base[0]
+        erase_max_addr  = args.erase_last_address[0]
 
         # Opent the IO
         dev = bio.BrainfuckIO(device_path)
