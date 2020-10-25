@@ -24,7 +24,7 @@ DEPTH = {}; -- The size of memory in words
 WIDTH = {}; -- The size of data in bits
 ADDRESS_RADIX = HEX;          -- The radix for address values
 DATA_RADIX = HEX;             -- The radix for data values
-CONTENT                       -- start of (address : data pairs)
+CONTENT                       -- Start of the program (address : data pairs)
 BEGIN\n
 """
 
