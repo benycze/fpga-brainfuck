@@ -89,4 +89,58 @@ package binst;
         };
     endinstance
 
+
+    // Processing context data
+    //
+    // These structure holds context data which are passed between
+    // stage 1 and 3
+    typedef struct {
+        d_pc                pcValue;
+        UInt#(tag_width)  tagValue;
+    } BStContext #(type d_pc, numeric type tag_width) deriving (Bits, FShow);
+
+    instance DefaultValue #(BStContext#(d_pc, tag_width)) provisos(
+        Literal#(d_pc)
+    );
+        defaultValue = BStContext {
+            pcValue     : 0,
+            tagValue    : 0
+        };
+    endinstance
+
+    // ST3 to ST1 structure with PC modification information
+    // in the case of jumps
+    typedef struct {
+        Bool    stage3AddrEn;
+        d_pc    stage3Addr;
+    } BSt3PcContext #(type d_pc) deriving (Bits, FShow);
+
+    instance DefaultValue #(BSt3PcContext#(d_pc)) provisos (
+        Literal#(d_pc)
+    );
+        defaultValue = BSt3PcContext {
+            stage3AddrEn    : False,
+            stage3Addr      : 0
+        };
+    endinstance
+
+    // Precomputed jump values for the ST3, including jumps
+    // and invalidation of the stage
+    typedef struct {
+        d_pc jmpBeginAddr;
+        d_pc jmpEndAddr;
+        d_pc jmpNextPc;
+    } BJmpAddrContext #(type d_pc) deriving (Bits, FShow);
+
+    instance DefaultValue #(BJmpAddrContext#(d_pc)) provisos (
+        Literal#(d_pc)
+    );
+        defaultValue = BJmpAddrContext {
+            jmpBeginAddr    : 0,
+            jmpEndAddr      : 0,
+
+            jmpNextPc       : 0
+        };
+    endinstance
+
 endpackage : binst
