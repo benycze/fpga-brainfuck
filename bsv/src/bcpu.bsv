@@ -70,14 +70,18 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
 
     // Memory blocks --------------------------------------
         // Cell memory
-    BRAM_Configure cellCfg = defaultValue;
+    BRAM_Configure cellCfg  = defaultValue;
+    cellCfg.latency         = 2;
     cellCfg.allowWriteResponseBypass = False;
+    cellCfg.outFIFODepth    = 4;
     BRAM2Port#(BMemAddress,BData)  cellMem <- mkBRAM2Server(cellCfg);  
 
         // Instruction memory
-    BRAM_Configure instCfg = defaultValue;
+    BRAM_Configure instCfg  = defaultValue;
+    instCfg.latency         = 2;
+    instCfg.loadFormat      = loadFormat;
+    instCfg.outFIFODepth    = 4;
     instCfg.allowWriteResponseBypass = False;
-    instCfg.loadFormat = loadFormat;
 
     BRAM2Port#(BMemAddress,BData) instMem <- mkBRAM2Server(instCfg);  
 

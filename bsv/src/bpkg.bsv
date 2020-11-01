@@ -35,6 +35,9 @@ Bit#(2) regSpace  = 'b10;
 Integer bitEnabled     = 0;
 Integer bitStepEnabled = 1;
 
+// Width of the internal tag counter
+typedef 5 BTagWidth;
+
 // Configuration of the BCore
 Integer bCoreInoutSize = 1024;
 

@@ -185,12 +185,7 @@ module mkTbPrgRun (Empty);
 
             // Check if we need to read any data, read them untill the flag is set
             if(readData[cODATA_MASK] != 0)seq
-                // Disable the BCPU, print the result and and
-                // enable it again
-                mcpu.write(getAddress(regSpace,'h0), 'h0);
-                delay(2);
                 readAndPrint();
-                mcpu.write(getAddress(regSpace,'h0), 'h1);
             endseq
 
             // Check if the BCPU is in the exit state or check if we
