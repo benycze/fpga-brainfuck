@@ -1,7 +1,5 @@
 # Brainfuck CPU for FPGA
 
-BSV build status: [![Build Status](https://travis-ci.com/benycze/fpga-brainfuck.svg?branch=master)](https://travis-ci.com/benycze/fpga-brainfuck)
-
 This repository contains a source code and desing of the CPU processing the Brainfuck code in FPGA. The design is quite simple and it is targeted on beginning FPGA programmers. The project was created during the [European FPGA Developer Contests 2020](https://www.arrow.com/en/research-and-events/events/fpga-developer-contest-2020).
 
 * Development board [CYC1000](https://shop.trenz-electronic.de/en/Products/Trenz-Electronic/CYC1000-Intel-Cyclone-10/), [documentation](https://www.trenz-electronic.de/fileadmin/docs/Trenz_Electronic/Modules_and_Module_Carriers/2.5x6.15/TEI0003/REV02/Documents/CYC1000%20User%20Guide.pdf), [resources](https://shop.trenz-electronic.de/en/TEI0003-02-CYC1000-with-Cyclone-10-FPGA-8-MByte-SDRAM?path=Trenz_Electronic/Modules_and_Module_Carriers/2.5x6.15/TEI0003/Driver/Arrow_USB_Programmer)
