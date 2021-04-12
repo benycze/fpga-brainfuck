@@ -29,6 +29,6 @@ blocks:
             # Translate the project
             - checkout
             - git clone https://github.com/benycze/bsc-docker-container.git 
-            - cd bsc-docker-container && bash bootstrap.sh && docker build -t localhost/bsc-compiler --build-arg BJOBS=1 . && cd ..
+            - cd bsc-docker-container/scripts && bash bootstrap.sh && cd .. && docker build --build-arg USER=$USER --build-arg UID=`id -u` --build-arg `id -g` -t localhost/bsc-compiler . && cd ..
             - cd bsv/ && ./start-container.sh -s 
-    
+
