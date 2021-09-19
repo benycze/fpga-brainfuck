@@ -16,7 +16,17 @@ MNT_WDIR="/bsc-work"
 COMPILER_PATH=`pwd`/../sw
 COMPILER_WDIR="/sw"
 
-DOCKER_BIN=/usr/bin/docker
+# Check if docker/podman is available
+DOCKER_BIN=
+CONTAINER_TOOL=""
+if command -v docker > /dev/null; then
+    DOCKER_BIN=`which docker`
+elif command -v podman > /dev/null; then
+    DOCKER_BIN=`which podman`
+else
+    echo "No container tool (podman, docker has been found)!"
+    exit 1
+fi
 
 # Functions & code --------------------------------------------------------------
 
@@ -72,6 +82,7 @@ while [ "$1" != "" ]; do
 done
 
 # Run the code ------------------------------------------------------------------
+echo "${DOCKER_BIN} tool has been found ..."
 if [ $translate_only -eq 1 ];then
     # Check if the bsc compiler exists. We will run it inside
     # the docker if the bsc command is not available
