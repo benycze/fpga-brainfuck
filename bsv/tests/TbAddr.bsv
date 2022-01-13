@@ -47,7 +47,7 @@ module mkTbAddr (Empty);
         mcpu.read(getAddress(regSpace,0));
         action
             let ret <- mcpu.getData();
-            $displayh("Command register during the EN mode --> 0x",ret);
+            $display("Command register during the EN mode --> 0x%x",ret);
         endaction
         $display("Disabling the unit ...");
         mcpu.write(getAddress(regSpace,0),'h0);
@@ -63,7 +63,7 @@ module mkTbAddr (Empty);
                 $display("Step flag has to be zero now.");
                 report_and_stop(1);
             end
-            $displayh("Command register during the EN mode --> 0x",ret);
+            $display("Command register during the EN mode --> 0x%x",ret);
         endaction
 
         delay(10);
@@ -83,8 +83,8 @@ module mkTbAddr (Empty);
         action
             if(data_reg0 != pc0 && data_reg1 != pc1)begin
                 $display("PC value read/write is not working!");
-                $display("* expected - 0x",pc1," (MSB) and 0x",pc0," (LSB)");
-                $displayh("* received - 0x",addr_reg1,"(MSB) and 0x",addr_reg0," (LSB)");
+                $display("* expected - 0x%x",pc1," (MSB) and 0x%x",pc0," (LSB)");
+                $display("* received - 0x%x",addr_reg1,"(MSB) and 0x%x",addr_reg0," (LSB)");
                 
                 report_and_stop(1);
             end
@@ -115,7 +115,7 @@ module mkTbAddr (Empty);
             action
                 let ret <- mcpu.getData();
                 if(ret != data_reg1)begin   
-                    $displayh("Read data 0x",ret," and write data 0x",idx," doesn't match!");
+                    $display("Read data 0x%x",ret," and write data 0x%x",idx," doesn't match!");
                     report_and_stop(1);
                 end
             endaction
