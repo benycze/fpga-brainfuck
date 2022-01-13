@@ -217,7 +217,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
         regSpaceRet <= tagged Invalid;
         regRegRead  <= False;
         //$display("BCpu: Draining data from the register space");
-        //$displayh("BCpu: Drained data = ", data);
+        //$display("BCpu: Drained data = ", data);
     endrule
 
     // Drain and apply rules which can be taken immediatelly
@@ -268,7 +268,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
     endrule
 
     rule push_bcore_input_data (inputBCoreData matches tagged Valid .d);
-        //$displayh("Pushing inptut data to the BCore unit 0x",d);
+        //$display("Pushing inptut data to the BCore unit 0x%x",d);
         bCore.inputDataPush(d);
         inputBCoreData <= tagged Invalid;
     endrule
@@ -334,14 +334,14 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
             end
         endcase
 
-        //$displayh("BCpu read: Read method fired on address 0x",addr);
+        //$display("BCpu read: Read method fired on address 0x%x",addr);
     endmethod
 
     method ActionValue#(BData) getData();
         // Unlock the read part and after the data are read out
         let data = readRetData.first;
         readRetData.deq(); 
-        //$displayh("BCpu read: Returned data --> 0x",data);
+        //$display("BCpu read: Returned data --> 0x%x",data);
         //$display("BCpu read done in time ", $time);
         return data;
     endmethod
@@ -390,7 +390,7 @@ module mkBCpuInit#(LoadFormat loadFormat) (BCpu_IFC);
             end
         endcase
 
-       //$displayh("BCpu: Write method fired -->  0x", addr, " data --> 0x",data);
+       //$display("BCpu: Write method fired -->  0x%x", addr, " data --> 0x%x",data);
     endmethod
 
     method Bool getReadRunning();

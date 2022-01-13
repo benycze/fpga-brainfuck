@@ -143,7 +143,7 @@ cvsim_%: %.bsv
 	$(MAKE) -C .. vcompile
 	@echo "Compiling the verilog model and simulator ..."
 	bsc -u -elab -verilog $ $(BSC_ARGS) $(VERILOG_BSC_ARGS)  $(BSC_COMPILATION_FLAGS) -p $(BSC_PATH)  $< $(LOG_CMD)
-	bsc -verilog $(BSC_ARGS) -remove-dollar -vsearch $(VERILOG_PATH) -e mk$* -o ./$@.exe $(LOG_CMD)
+	bsc -verilog $(BSC_ARGS) -remove-dollar -vsearch $(VERILOG_PATH) -vsim iverilog -e mk$* -o ./$@.exe $(LOG_CMD)
 	@echo "Running the simulation (Verilog) ..."
 	$(call run_and_check, $@.exe )
 
