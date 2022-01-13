@@ -107,9 +107,9 @@ module mkTbPrgRun (Empty);
                     let expData =  expectedOut.sub(outputIdx);
                     if(tmpData != expData)begin
                         $display("Expected output doesn't match!");
-                        $displayh("* expected: 0x",expData);
-                        $displayh("* received: 0x",tmpData);
-                        $displayh("* address: 0x",outputIdx);
+                        $display("* expected: 0x%x",expData);
+                        $display("* received: 0x%x",tmpData);
+                        $display("* address: 0x%x",outputIdx);
                         report_and_stop(1);
                     end
 
@@ -229,9 +229,9 @@ module mkTbPrgRun (Empty);
 
             if(bcpuData != refData)seq
                 $display("Reference cell memory doesn't match!");
-                $displayh("* expected: 0x",refData);
-                $displayh("* received: 0x",bcpuData);
-                $displayh("* address: 0x",idx);
+                $display("* expected: 0x%x",refData);
+                $display("* received: 0x%x",bcpuData);
+                $display("* address: 0x%x",idx);
                 report_and_stop(1);
             endseq
         endseq
