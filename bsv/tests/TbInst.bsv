@@ -49,8 +49,8 @@ module mkTbInst (Empty);
             let inConv = getInstruction(in); 
             if(inConv != exp)begin
                 $display("Reference and computed opcode doesn't match:");
-                $displayh("Expected - 0x", exp);
-                $displayh("Received - 0x", inConv);
+                $display("Expected - 0x%x", exp);
+                $display("Received - 0x%x", inConv);
                 report_and_stop(1);
             end
         endaction;
