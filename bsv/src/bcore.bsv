@@ -216,16 +216,16 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             actTag = actTag + 1;
             actPc  = st3Addr1;
             $display("BCore ST1: Stage address writeback detected in instruction fetch stage in time ", $time);
-            $displayh("BCore ST1: Fetch addresses 0x", st3Addr1, " and 0x", st3Addr2);
+            $display("BCore ST1: Fetch addresses 0x%x", st3Addr1, " and 0x%x", st3Addr2);
             st3PcFifo.deq;
         end else begin
             instMemPortAReq.wset(makeBRAMRequest(False, nonStage1Addr, 0));
             instMemPortBReq.wset(makeBRAMRequest(False, nonStage2Addr, 0)); 
             $display("BCore ST1: Standard instruction fetch in in time ", $time);
-            $displayh("BCore ST1: Fetch addresses 0x", nonStage1Addr, " and 0x",nonStage2Addr);
+            $display("BCore ST1: Fetch addresses 0x%x", nonStage1Addr, " and 0x%x",nonStage2Addr);
             actPc = nonStage1Addr;
         end
-        $displayh("BCore ST1: Tag value 0x", actTag);
+        $display("BCore ST1: Tag value 0x%x", actTag);
 
         // Enque the context for the next stage
         let st1Context = BStContext {
@@ -270,7 +270,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         // we will issue the new instruction
         if(!(st3Dec.takeIn || st3Dec.takeOut ) || !st3DecFifo.notEmpty())begin
             $display("BCore ST2 Barrier: Barrier enabled in time ", $time);
-            $displayh("BCore ST2 Barrier: Context PC = 0x",st1Context.pcValue, ", tag = 0x", st1Context.tagValue);
+            $display("BCore ST2 Barrier: Context PC = 0x%x",st1Context.pcValue, ", tag = 0x%x", st1Context.tagValue);
             st2BarrierInstFifo1.enq(inst1);
             st2BarrierInstFifo2.enq(inst2);
             st2BarrierFifo.enq(st1Context);
@@ -285,7 +285,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         let newVal = st2TagCnt + 1;
         st2TagCnt <= newVal;
         $display("BCore ST2: Adjusting internal tag counter based on the result from st3 in time ", $time);
-        $displayh("BCore ST2: New adjusted value is 0x", newVal);
+        $display("BCore ST2: New adjusted value is 0x%x", newVal);
     endrule
 
     rule st2_instruction_decode_and_operands(!st3TagAdjust.notEmpty() && stEnabled);
@@ -304,7 +304,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
         let tagValid = True;
         if (actSt2Tag != st1Context.tagValue) begin
             $display("BCore ST2: Invalid tag value, ignoring the instruction in time ", $time);
-            $displayh("BCore ST2: PC = 0x", st1Context.pcValue, ", tag = 0x",st1Context.tagValue);
+            $display("BCore ST2: PC = 0x%x", st1Context.pcValue, ", tag = 0x%x",st1Context.tagValue);
             tagValid = False;
         end
 
@@ -312,7 +312,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // Both instructions should be valid, we pass the check and we can decode the instruction 
             // now.
             $display("BCore ST2: Instruction decode & fetch operation has been started.");
-            $displayh("BCore ST2: Decoding instruction from PC = 0x", st1Context.pcValue,", tag = 0x", st1Context.tagValue);
+            $display("BCore ST2: Decoding instruction from PC = 0x%x", st1Context.pcValue,", tag = 0x%x", st1Context.tagValue);
             let ioDet = False;
             let st3Dec = defaultValue;
             BInst instruction = unpack({pack(inst1), pack(inst2)});
@@ -350,12 +350,12 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                 tagged I_JmpEnd { jmpVal : .jmpVal1 } : begin 
                     st3Dec.jmpEnd = True;
                     st3Dec.jmpVal = jmpVal1;
-                    $display("BCore ST2: Jump-end instruction, value = 0x", jmpVal1);
+                    $display("BCore ST2: Jump-end instruction, value = 0x%x", jmpVal1);
                 end
                 tagged I_JmpBegin { jmpVal : .jmpVal1 } : begin 
                     st3Dec.jmpBegin = True;
                     st3Dec.jmpVal   = jmpVal1;
-                    $displayh("BCore ST2: Jump-begin instruction, value = 0x", jmpVal1);
+                    $display("BCore ST2: Jump-begin instruction, value = 0x%x", jmpVal1);
                 end
                 tagged I_Terminate: begin
                     $display("BCore ST2: Program termination was detected.");
@@ -393,7 +393,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // for the next stage)
             let read_addr = regCell;
             cellMemPortAReq.wset(makeBRAMRequest(False,read_addr,0));
-            $displayh("BCore ST2: Sending read request to BRAM address 0x",read_addr);
+            $display("BCore ST2: Sending read request to BRAM address 0x%x",read_addr);
 
             // Prepare data for the next stage
             st3DecFifo.enq(st3Dec);
@@ -438,13 +438,13 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                 // Unpack data from the maybe and use the register data
                 tmpCellAData = fromMaybe(?, regCellData);
             end
-            $displayh("BCore ST3: Current cell data value is 0x", tmpCellAData);
+            $display("BCore ST3: Current cell data value is 0x%x", tmpCellAData);
 
             // We will invalidate data iff we are moving the pointer
             // or we have a jump instruction. Any inc/dec operations are
             // fine because we have a right data from temporal register
             $display("BCore ST3: Execution valid instruction in time ", $time);
-            $displayh("BCore ST3: PC = 0x",stContext.pcValue, ", tag = 0x", stContext.tagValue);
+            $display("BCore ST3: PC = 0x%x",stContext.pcValue, ", tag = 0x%x", stContext.tagValue);
 
             // Helping invalidation variables
             let cellChange = False;
@@ -456,21 +456,21 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             // We need to perform a writeback iff we are incrementing/decrementing address or terminationg 
             if(decInst.dataPtrInc || decInst.dataPtrDec || decInst.prgTerminated) begin
                 cellMemPortBReq.wset(makeBRAMRequest(True, regCell, tmpCellAData));
-                $displayh("BCore ST3: Stage 3 data change, writeback to BRAM: address = 0x", regCell, ", data = 0x",tmpCellAData);
+                $display("BCore ST3: Stage 3 data change, writeback to BRAM: address = 0x%x", regCell, ", data = 0x%x",tmpCellAData);
                 wbDone = True;
             end 
 
             if(decInst.dataPtrInc) begin
                 tmpCellAddr     = tmpCellAddr + 1;
                 cellChange      = True;
-                $displayh("BCore ST3: Stage 3 cell memory address increment. New value = 0x", tmpCellAddr);
+                $display("BCore ST3: Stage 3 cell memory address increment. New value = 0x%x", tmpCellAddr);
             end
 
             if(decInst.dataPtrDec) begin 
                 // We need to go back to the address 
                 tmpCellAddr     = tmpCellAddr - 1;
                 cellChange      = True;
-                $displayh("BCore ST3: Stage 3 cell memory address decrement. New value = 0x", tmpCellAddr);
+                $display("BCore ST3: Stage 3 cell memory address decrement. New value = 0x%x", tmpCellAddr);
             end
 
             // Cell value - we don't need to do any write-back to BRAM because we can remember the value and 
@@ -479,13 +479,13 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
             if(decInst.dataInc)begin
                 tmpCellAData    = tmpCellAData + 1; 
                 wbReg          = True;
-                $displayh("BCore ST3: Stage 3 cell memory data increment. New value = 0x", tmpCellAData);
+                $display("BCore ST3: Stage 3 cell memory data increment. New value = 0x%x", tmpCellAData);
             end
 
             if(decInst.dataDec) begin
                 tmpCellAData    = tmpCellAData - 1;
                 wbReg          = True;
-                $displayh("BCore ST3: Stage 3 cell memory data decrement. New value = 0x", tmpCellAData);
+                $display("BCore ST3: Stage 3 cell memory data decrement. New value = 0x%x", tmpCellAData);
             end
                     
             // Input/output to/from the cell
@@ -493,7 +493,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                 tmpCellAData    = inputData;
                 wbReg           = True;
                 ioDet           = True;
-                $displayh("BCore ST3: Reading data from input FIFO. Value = 0x", tmpCellAData);
+                $display("BCore ST3: Reading data from input FIFO. Value = 0x%x", tmpCellAData);
             end else begin
                 if(decInst.takeIn) begin
                     $display("BCore ST3: Unable to read from the input FIFO. No data available in time ", $time);
@@ -502,7 +502,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
 
             if(decInst.takeOut) begin
                 outDataWire.wset(tmpCellAData);
-                $displayh("BCore ST3: Writing data to output FIFO. Value = 0x", tmpCellAData);
+                $display("BCore ST3: Writing data to output FIFO. Value = 0x%x", tmpCellAData);
                 ioDet = True;
             end else begin
                 if(decInst.takeOut)begin
@@ -542,7 +542,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                 st3TagAdjust.enq(True);
                 actSt3TagCnt = actSt3TagCnt + 1;
                 $display("BCore ST3: PC request enque in time ", $time);
-                $displayh("BCore ST3: New tag value is 0x", actSt3TagCnt);
+                $display("BCore ST3: New tag value is 0x%x", actSt3TagCnt);
             end
 
             // Write-back to the registers
@@ -553,7 +553,7 @@ module mkBCore#(parameter Integer inoutFifoSize) (BCore_IFC#(typeAddr,typeData))
                 $display("BCore ST3: Invalidating register data, need to fetch a fresh data.");
             end else if(wbReg) begin
                 regCellData <= tagged Valid tmpCellAData;
-                $displayh("BCore ST3: Storing new data into the cell data register value 0x", tmpCellAData);
+                $display("BCore ST3: Storing new data into the cell data register value 0x%x", tmpCellAData);
             end
 
             // Terminate the program
